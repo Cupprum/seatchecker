@@ -1,0 +1,360 @@
+query GetBookingByBookingId(
+    $bookingInfo: GetBookingByBookingIdInputType
+    $authToken: String!
+  ) {
+    getBookingByBookingId(bookingInfo: $bookingInfo, authToken: $authToken) {
+      addons {
+        ...AddonFrag
+      }
+      carHire {
+        ...CarHireFrag
+      }
+      contacts {
+        ...ContactsFrag
+      }
+      extras {
+        ...ExtrasOrFeesFrag
+      }
+      groundTransfer {
+        ...GroundTransferFrag
+      }
+      hotels {
+        ...HotelsFrag
+      }
+      info {
+        ...InfoFrag
+      }
+      journeys {
+        ...JourneysFrag
+      }
+      passengers {
+        ...PassengersFrag
+      }
+      payments {
+        ...PaymentInfoFrag
+      }
+      fees {
+        ...ExtrasOrFeesFrag
+      }
+      serverTimeUTC
+      sessionToken
+      tripId
+    }
+  }
+  fragment AddonFrag on AddOnResponseModelType {
+    code
+    currLater
+    currNow
+    dropOffLocation
+    end
+    isSingleOffer
+    itemId
+    loc
+    name
+    pax
+    paxNum
+    pickUpLocation
+    provider
+    providerCode
+    qty
+    refNo
+    sold
+    src
+    start
+    status
+    total
+    type
+  }
+  fragment CarHireFrag on CarHireResponseModelType {
+    carSupplierConfirmationId
+    carType
+    confirmationId
+    currencyCode
+    insurance
+    pickupDateTime
+    pickupLocation
+    returnDateTime
+    returnLocation
+    serviceProvider
+    sold
+    status
+    totalPrice
+  }
+  fragment PassengerNameFrag on PassengerNameResponseModelType {
+    first
+    last
+    middle
+    suffix
+    title
+  }
+  fragment ContactsFrag on ContactResponseModelType {
+    address
+    city
+    country
+    cultureCode
+    email
+    fax
+    homePhone
+    name {
+      ...PassengerNameFrag
+    }
+    otherPhone
+    postalCode
+    provinceState
+    type
+    workPhone
+  }
+  fragment ExtrasOrFeesFrag on BookingExtraResponseModelType {
+    amt
+    code
+    includedSsrs
+    isPartOfBundle
+    isSeatChange
+    journeyNum
+    percentageDiscount
+    qty
+    segmentNum
+    sold
+    total
+    totalDiscount
+    totalWithoutDiscount
+    type
+    vat
+  }
+  fragment GroundTransferFrag on GroundTransferResponseModelType {
+    confirmationId
+    currencyCode
+    dropoffDateTime
+    dropoffLocation
+    flightBookingId
+    isSold
+    pickupDateTime
+    pickupLocation
+    pnr
+    status
+    totalPrice
+  }
+  fragment HotelsFrag on HotelsResponseModelType {
+    status
+  }
+  fragment InfoFrag on BookingInfoResponseModelType {
+    allSeatsAutoAllocated
+    balanceDue
+    bookingAgent
+    bookingId
+    createdUtcDate
+    curr
+    currPrecision
+    domestic
+    holdDateTime
+    isConnectingFlight
+    isBuyOneGetOneDiscounted
+    isHoldable
+    modifiedUtcDate
+    pnr
+    status
+    locationCode
+  }
+  fragment JourneyChangeFrag on JourneyChangeInfoResponseModelType {
+    freeMove
+    isChangeable
+    isChanged
+    reasonCode
+  }
+  fragment FaresFrag on BookingFareResponseModelType {
+    amt
+    code
+    disc
+    fareKey
+    fat
+    includedSsrs
+    percentageDiscount
+    qty
+    sold
+    total
+    totalDiscount
+    totalWithoutDiscount
+    type
+    vat
+  }
+  fragment FatsFrag on BookingFatResponseModelType {
+    amount
+    code
+    total
+    vat
+    description
+    qty
+  }
+  fragment SeatRowDeltaFrag on PaxSeatRowDeltaResponseModelType {
+    rowDistance
+    segmentNum
+  }
+  fragment SegmentsFrag on SegmentModelResponseModelType {
+    aircraft
+    arrive
+    arriveUTC
+    depart
+    departUTC
+    dest
+    duration
+    flown
+    flt
+    isCancelled
+    isDomestic
+    orig
+    segmentNum
+    vatRate
+  }
+  fragment ZoneDiscountFrag on BookingZoneDiscountResponseModelType {
+    code
+    pct
+    total
+    zone
+  }
+  fragment JourneysFrag on BookingJourneyResponseModelType {
+    arrive
+    arriveUTC
+    changeInfo {
+      ...JourneyChangeFrag
+    }
+    checkInCloseUtcDate
+    checkInFreeAllocateOpenUtcDate
+    checkInOpenUtcDate
+    depart
+    departUTC
+    dest
+    destCountry
+    duration
+    fareClass
+    fareOption
+    fares {
+      ...FaresFrag
+    }
+    fareType
+    fats {
+      ...FatsFrag
+    }
+    flt
+    infSsrs {
+      ...ExtrasOrFeesFrag
+    }
+    setaSsrs {
+      ...ExtrasOrFeesFrag
+    }
+    journeyNum
+    maxPaxSeatRowDistance {
+      ...SeatRowDeltaFrag
+    }
+    mobilebp
+    orig
+    origCountry
+    seatsLeft
+    segments {
+      ...SegmentsFrag
+    }
+    zoneDiscount {
+      ...ZoneDiscountFrag
+    }
+  }
+  fragment ResidentInfoFrag on PassengerResidentInfoResponseModelType {
+    community
+    dateOfBirth
+    dob
+    docNum
+    docType
+    hasLargeFamilyDiscount
+    hasResidentDiscount
+    largeFamilyCert
+    municipality
+    saraValidationCode
+  }
+  fragment SegmentCheckinFrag on PassengerSegmentCheckinResponseModelType {
+    journeyNum
+    segmentNum
+    status
+  }
+  fragment TravelDocumentFrag on TravelDocumentResponseModelType {
+    countryOfIssue
+    dateOfBirth
+    dOB
+    docNumber
+    docType
+    expiryDate
+    nationality
+    specialVisaDetails {
+      countryOfIssue
+      docNumber
+      docType
+    }
+  }
+  fragment PassengerWithInfantTravelDocumentsFrag on PassengerWithInfantTravelDocumentResponseModelType {
+    num
+    travelDocument {
+      ...TravelDocumentFrag
+    }
+    infantTravelDocument {
+      ...TravelDocumentFrag
+    }
+  }
+  fragment PassengersFrag on PassengerResponseModelType {
+    dateOfBirth
+    doB
+    ins
+    inf {
+      dateOfBirth
+      dob
+      first
+      last
+      middle
+      suffix
+      title
+    }
+    name {
+      ...PassengerNameFrag
+    }
+    nationality
+    paxFees {
+      ...ExtrasOrFeesFrag
+    }
+    paxNum
+    residentInfo {
+      ...ResidentInfoFrag
+    }
+    segCheckin {
+      ...SegmentCheckinFrag
+    }
+    segFees {
+      ...ExtrasOrFeesFrag
+    }
+    segPrm {
+      ...ExtrasOrFeesFrag
+    }
+    segSeats {
+      ...ExtrasOrFeesFrag
+    }
+    segSsrs {
+      ...ExtrasOrFeesFrag
+    }
+    travelDocuments {
+      ...PassengerWithInfantTravelDocumentsFrag
+    }
+    type
+  }
+  fragment PaymentInfoFrag on PaymentInfoResponseModelType {
+    accName
+    accNum
+    amt
+    code
+    currency
+    dccAmt
+    dccApplicable
+    dccCurrency
+    dccRate
+    discount
+    isReward
+    status
+    type
+    createdDate
+    invoiceNumber
+  }
+  

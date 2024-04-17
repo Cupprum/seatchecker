@@ -1,0 +1,402 @@
+mutation CreateBasketForActiveTrip(
+  $tripId: String!
+  $sessionToken: String
+  $currency: String
+  $journeys: [JourneyInputType]
+) {
+  createBasketForActiveTrip(
+    tripId: $tripId
+    sessionToken: $sessionToken
+    currency: $currency
+    journeys: $journeys
+  ) {
+    ...BasketCommon
+    gettingAround {
+      ...GettingAroundPillar
+    }
+    thingsToDo {
+      ...ThingsToDoPillar
+    }
+  }
+}
+fragment TotalCommon on PriceType {
+  total
+}
+fragment PriceCommon on PriceType {
+  amountWithTaxes
+  total
+  discount
+  discountCode
+}
+fragment ComponentCommon on ComponentType {
+  id
+  parentId
+  code
+  type
+  quantity
+  removable
+  price {
+    ...PriceCommon
+  }
+}
+fragment VariantUnionAddOn on VariantUnionType {
+  ... on AddOn {
+    itemId
+    provider
+    paxNumber
+    pax
+    src
+    start
+    end
+  }
+}
+fragment VariantUnionFare on VariantUnionType {
+  ... on Fare {
+    fareOption
+    journeyNumber
+  }
+}
+fragment VariantUnionSsr on VariantUnionType {
+  ... on Ssr {
+    journeyNumber
+    paxNumber
+    segmentNumber
+  }
+}
+fragment VariantUnionSeat on VariantUnionType {
+  ... on Seat {
+    paxNumber
+    journeyNumber
+    segmentNumber
+    seatType
+    designator
+    childSeatsWithAdult
+    hasAdditionalSeatCost
+  }
+}
+fragment VariantUnionBundle on VariantUnionType {
+  ... on Bundle {
+    journeyNumber
+    segmentNumber
+  }
+}
+fragment VariantUnionVoucher on VariantUnionType {
+  ... on Voucher {
+    firstName
+    lastName
+    email
+  }
+}
+fragment VariantUnionPhysicalVoucher on VariantUnionType {
+  ... on PhysicalVoucher {
+    sequenceNumber
+    firstName
+    lastName
+    address1
+    address2
+    city
+    postalCode
+    country
+    countryName
+    scheduleDate
+    message
+  }
+}
+fragment VariantUnionDigitalVoucher on VariantUnionType {
+  ... on DigitalVoucher {
+    sequenceNumber
+    firstName
+    lastName
+    email
+    theme
+    scheduleDate
+    scheduleTime
+    message
+  }
+}
+fragment VariantGroundTransfer on VariantUnionType {
+  ... on GroundTransfer {
+    locationPickUp
+    locationDropOff
+    routeType
+    startDate
+    endDate
+    itemId
+    location
+  }
+}
+fragment GettingTherePillar on GettingThereType {
+  price {
+    ...TotalCommon
+  }
+  journeys {
+    ... on JourneyType {
+      arrival
+      departure
+      destination
+      duration
+      fareClass
+      fareKey
+      fareOption
+      flightKey
+      flightNumber
+      isConnecting
+      isDomestic
+      journeyNum
+      origin
+      segments {
+        ... on SegmentType {
+          aircraft
+          arrival
+          departure
+          destination
+          duration
+          hasGovernmentTax
+          flightNumber
+          segmentNum
+          origin
+          originCountry
+          destinationCountry
+        }
+      }
+    }
+  }
+  discounts {
+    ... on DiscountType {
+      amount
+      code
+      journeyNum
+      percentage
+      zone
+      description
+      qty
+    }
+  }
+  taxes {
+    ... on TaxType {
+      amount
+      code
+      journeyNum
+      percentage
+      zone
+    }
+  }
+  vouchers {
+    ... on VoucherType {
+      amount
+      code
+      status
+      accountNumber
+    }
+  }
+  components {
+    ... on ComponentType {
+      ...ComponentCommon
+      variant {
+        ...VariantUnionAddOn
+        ...VariantUnionFare
+        ...VariantUnionSsr
+        ...VariantUnionSeat
+        ...VariantGroundTransfer
+        ...VariantUnionBundle
+        ...VariantUnionVoucher
+        ...VariantUnionDigitalVoucher
+        ...VariantUnionPhysicalVoucher
+      }
+    }
+  }
+  messages {
+    ... on MessageType {
+      type
+      journeyNum
+      key
+      message
+    }
+  }
+}
+fragment StayingTherePillar on StayingThereType {
+  price {
+    ...TotalCommon
+  }
+  components {
+    ...ComponentCommon
+    price {
+      ...PriceCommon
+      fat
+      amount
+    }
+    payLater {
+      ...PriceCommon
+      fat
+      amount
+    }
+    variant {
+      ... on Hotel {
+        hotelName
+        reservationDescription
+        countryCode
+        city
+        startDate
+        endDate
+        provider
+        propertySurcharges {
+          ... on PropertySurcharges {
+            type
+            price
+          }
+        }
+        guestTotals {
+          adults
+          children
+        }
+        reservationInfo {
+          rooms {
+            ... on HotelRoomReservationInfo {
+              roomAllocation {
+                adultCount
+                childAges
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  payLater {
+    total
+  }
+}
+fragment PayLaterCommon on PriceType {
+  total
+}
+fragment BasketCommon on BasketType {
+  id
+  tripId
+  dotrezSessionId
+  currency
+  gettingThere {
+    ...GettingTherePillar
+  }
+  stayingThere {
+    ...StayingTherePillar
+  }
+  price {
+    ...TotalCommon
+  }
+  payLater {
+    ...PayLaterCommon
+  }
+  totalToPay
+}
+fragment VariantCar on VariantUnionType {
+  ... on Car {
+    rentPrice
+    carName
+    refId
+    engineLoadId
+    pickUpTime
+    pickUpLocation {
+      countryCode
+      code
+      name
+    }
+    dropOffTime
+    dropOffLocation {
+      countryCode
+      code
+      name
+    }
+    insurance
+    extras {
+      totalPrice
+      includedInRate
+      code
+      price
+      selected
+      type
+    }
+    residence
+    age
+  }
+}
+fragment VariantCarRental on VariantUnionType {
+  ... on CarRental {
+    rentPrice
+    carName
+    clientId
+    refId
+    pickUpTime
+    pickUpLocation {
+      countryCode
+      code
+      name
+    }
+    dropOffTime
+    dropOffLocation {
+      countryCode
+      code
+      name
+    }
+    insurance
+    extras {
+      totalPrice
+      includedInRate
+      code
+      price
+      selected
+      type
+      payNow
+    }
+    residence
+    age
+    searchId
+  }
+}
+fragment GettingAroundPillar on GettingAroundType {
+  price {
+    amount
+    discount
+    amountWithTaxes
+    total
+  }
+  payLater {
+    ...PayLaterCommon
+  }
+  taxes {
+    amount
+  }
+  components {
+    ...ComponentCommon
+    payLater {
+      amountWithTaxes
+      total
+    }
+    variant {
+      ...VariantCar
+      ...VariantCarRental
+      ...VariantGroundTransfer
+    }
+  }
+}
+fragment ThingsToDoPillar on ThingsToDoType {
+  price {
+    amount
+    discount
+    amountWithTaxes
+    total
+  }
+  taxes {
+    amount
+  }
+  components {
+    ...ComponentCommon
+    variant {
+      ... on Ticket {
+        name
+        reservationCode
+        activityTime
+        address
+      }
+    }
+  }
+}
