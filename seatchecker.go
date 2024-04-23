@@ -14,17 +14,20 @@ type auth struct {
 	Token      string `json:"token"`
 }
 
+type flights []struct {
+	BookingId string `json:"bookingId"`
+}
+
 func httpRequest(method string, url string, headers http.Header, payload map[string]any, response any) error {
 	b := new(bytes.Buffer)
 	if payload != nil {
 		json.NewEncoder(b).Encode(payload)
 	}
 
-	client := &http.Client{}
+	c := &http.Client{}
 	req, err := http.NewRequest(method, url, b)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to form request: %v", err)
 	}
 
 	if headers != nil {
@@ -33,28 +36,24 @@ func httpRequest(method string, url string, headers http.Header, payload map[str
 	// Add default headers
 	req.Header.Add("Content-Type", "application/json")
 
-	res, err := client.Do(req)
+	res, err := c.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to execute request: %v", err)
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to read response: %v", err)
 	}
 
 	if err := json.Unmarshal(body, response); err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
-		return err
+		return fmt.Errorf("failed to unmarshall Json respone: %v", err)
 	}
 
 	return nil
 }
 
-// TODO: add exception handling
 func accountLogin(email string, password string) (auth, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/usrprof/v2/accountLogin"
@@ -67,37 +66,42 @@ func accountLogin(email string, password string) (auth, error) {
 
 	err := httpRequest(method, url, nil, payload, &a)
 	if err != nil {
-		fmt.Println(err)
-		return auth{}, err
+		return auth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
 
 	return a, nil
 }
 
-// TODO: maybe this is more of a GetBookingId
-func getOrders(auth auth) (string, error) {
+func getOrders(auth auth) (flights, error) {
 	method := "GET"
 	url := fmt.Sprintf("https://www.ryanair.com/api/orders/v2/orders/%s?active=true&order=ASC", auth.CustomerID)
 	headers := http.Header{
 		"x-auth-token": {auth.Token},
 	}
 
-	var response struct {
+	// TODO: how much stuff is in items?
+	var res struct {
 		Items []struct {
-			Flights []struct {
-				BookingId string `json:"bookingId"`
-			} `json:"flights"`
+			Flights flights `json:"flights"`
 		} `json:"items"`
 	}
 
-	err := httpRequest(method, url, headers, nil, &response)
+	err := httpRequest(method, url, headers, nil, &res)
 	if err != nil {
-		fmt.Println("Failed to execute request:", err)
-		return "", err
+		return nil, fmt.Errorf("failed to get orders: %v", err)
 	}
 
 	// TODO: base on what should i do filtering here?
-	return response.Items[0].Flights[0].BookingId, nil
+	return res.Items[0].Flights, nil
+}
+
+func getBookingId(auth auth) (string, error) {
+	flights, err := getOrders(auth)
+	if err != nil {
+		return "", fmt.Errorf("failed to get booking id: %v", err)
+	}
+	// TODO: base on what should i do filtering here?
+	return flights[0].BookingId, nil
 }
 
 func getBookingById(bookingId string, a auth) (string, string, error) {
@@ -135,8 +139,7 @@ func getBookingById(bookingId string, a auth) (string, string, error) {
 
 	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
-		fmt.Println("Failed to execute request:", err)
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get booking: %v", err)
 	}
 
 	return response.Data.GetBookingByBookingId.TripId, response.Data.GetBookingByBookingId.SessionToken, nil
@@ -175,8 +178,7 @@ func createBasket(tripId string, sessionToken string) (string, error) {
 
 	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
-		fmt.Println("Failed to execute request:", err)
-		return "", err
+		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
 
 	return response.Data.CreateBasketForActiveTrip.Id, nil
@@ -214,8 +216,8 @@ func getSeatsQuery(basketId string) {
 
 	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
-		fmt.Println("Failed to execute request:", err)
-		// return "", err
+		fmt.Println("failed to get seats:", err)
+		// return fmt.Errorf("failed to get seats: %v", err)
 	}
 
 	fmt.Println(response)
@@ -224,24 +226,38 @@ func getSeatsQuery(basketId string) {
 func main() {
 	email := os.Getenv("SEATCHECKER_EMAIL")
 	if email == "" {
-		fmt.Println("Env var 'SEATCHECKER_EMAIL' is not configured.")
-		return
+		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_EMAIL' is not configured")
+		os.Exit(1)
 	}
 	password := os.Getenv("SEATCHECKER_PASSWORD")
 	if password == "" {
-		fmt.Println("Env var 'SEATCHECKER_PASSWORD' is not configured.")
-		return
+		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_PASSWORD' is not configured")
+		os.Exit(1)
 	}
 
-	auth, _ := accountLogin(email, password)
-	fmt.Println(auth)
+	auth, err := accountLogin(email, password)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
-	bookingId, _ := getOrders(auth)
-	// fmt.Println(bookingId)
+	bookingId, err := getBookingId(auth)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
-	tripId, sessionToken, _ := getBookingById(bookingId, auth)
+	tripId, sessionToken, err := getBookingById(bookingId, auth)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
-	basketId, _ := createBasket(tripId, sessionToken)
+	basketId, err := createBasket(tripId, sessionToken)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
 	getSeatsQuery(basketId)
 }
