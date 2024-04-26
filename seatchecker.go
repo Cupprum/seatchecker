@@ -9,24 +9,19 @@ import (
 	"os"
 )
 
-// TODO: Maybe the functions which use this struct should be methods.
 type Auth struct {
 	CustomerID string `json:"customerId"`
 	Token      string `json:"token"`
 }
 
 func httpRequest(method string, url string, headers http.Header, payload any, response any) error {
-	// TODO: can i make this a bit nicer?
-	var buf []byte
+	buf := []byte{}
 	var err error
 	if payload != nil {
-		// TODO: check that this produces actually something.
 		buf, err = json.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %v", err)
 		}
-	} else {
-		buf = []byte{}
 	}
 
 	c := &http.Client{}
@@ -66,8 +61,8 @@ func accountLogin(email string, password string) (Auth, error) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}{
-		Email:    email,
-		Password: password,
+		email,
+		password,
 	}
 
 	var auth Auth
@@ -84,7 +79,7 @@ type Flights []struct {
 	BookingId string `json:"bookingId"`
 }
 
-func getOrders(auth Auth) (Flights, error) {
+func (auth Auth) getOrders() (Flights, error) {
 	method := "GET"
 	// TODO: look at flags
 	url := fmt.Sprintf("https://www.ryanair.com/api/orders/v2/orders/%s?active=true&order=ASC", auth.CustomerID)
@@ -108,8 +103,8 @@ func getOrders(auth Auth) (Flights, error) {
 	return res.Items[0].Flights, nil
 }
 
-func getBookingId(auth Auth) (string, error) {
-	flights, err := getOrders(auth)
+func (auth Auth) getBookingId() (string, error) {
+	flights, err := auth.getOrders()
 	if err != nil {
 		return "", fmt.Errorf("failed to get booking id: %v", err)
 	}
@@ -131,7 +126,7 @@ type Booking struct {
 	SessionToken string `json:"sessionToken"`
 }
 
-func getBookingById(bookingId string, auth Auth) (Booking, error) {
+func (auth Auth) getBookingById(bookingId string) (Booking, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/bookingfa/en-gb/graphql"
 
@@ -151,11 +146,8 @@ func getBookingById(bookingId string, auth Auth) (Booking, error) {
 		BookingInfo BookingInfo `json:"bookingInfo"`
 		AuthToken   string      `json:"authToken"`
 	}{
-		BookingInfo: BookingInfo{
-			BookingId:   bookingId,
-			SurrogateId: auth.CustomerID,
-		},
-		AuthToken: auth.Token,
+		BookingInfo{bookingId, auth.CustomerID},
+		auth.Token,
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
@@ -189,7 +181,7 @@ func createBasket(booking Booking) (string, error) {
 	payload := GqlQuery{Query: query, Variables: booking}
 
 	type Data struct {
-		CreateBasketForActiveTrip struct {
+		Basket struct {
 			Id string `json:"id"`
 		} `json:"createBasketForActiveTrip"`
 	}
@@ -200,7 +192,7 @@ func createBasket(booking Booking) (string, error) {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
 
-	return response.Data.CreateBasketForActiveTrip.Id, nil
+	return response.Data.Basket.Id, nil
 }
 
 func getSeatsQuery(basketId string) error {
@@ -218,9 +210,9 @@ func getSeatsQuery(basketId string) error {
 		}
 	`
 	variables := struct {
-		BasketId string `json:"basketId"`
+		BId string `json:"basketId"`
 	}{
-		BasketId: basketId,
+		basketId,
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
@@ -262,10 +254,11 @@ func main() {
 	auth, err := accountLogin(email, password)
 	catchErr(err)
 
-	bookingId, err := getBookingId(auth)
+	bookingId, err := auth.getBookingId()
 	catchErr(err)
+	// fmt.Println(bookingId)
 
-	booking, err := getBookingById(bookingId, auth)
+	booking, err := auth.getBookingById(bookingId)
 	catchErr(err)
 
 	basketId, err := createBasket(booking)
