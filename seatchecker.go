@@ -15,9 +15,22 @@ type Auth struct {
 	Token      string `json:"token"`
 }
 
-func httpRequest(method string, url string, headers http.Header, payload bytes.Buffer, response any) error {
+func httpRequest(method string, url string, headers http.Header, payload any, response any) error {
+	// TODO: can i make this a bit nicer?
+	var buf []byte
+	var err error
+	if payload != nil {
+		// TODO: check that this produces actually something.
+		buf, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal payload: %v", err)
+		}
+	} else {
+		buf = []byte{}
+	}
+
 	c := &http.Client{}
-	req, err := http.NewRequest(method, url, &payload)
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(buf))
 	if err != nil {
 		return fmt.Errorf("failed to form request: %v", err)
 	}
@@ -57,14 +70,9 @@ func accountLogin(email string, password string) (Auth, error) {
 		Password: password,
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return Auth{}, fmt.Errorf("failed to marshal payload: %v", err)
-	}
-
 	var auth Auth
 
-	err = httpRequest(method, url, nil, *bytes.NewBuffer(body), &auth)
+	err := httpRequest(method, url, nil, payload, &auth)
 	if err != nil {
 		return Auth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
@@ -91,8 +99,7 @@ func getOrders(auth Auth) (Flights, error) {
 		} `json:"items"`
 	}
 
-	// TODO: do i have to allocate empty buffer here?
-	err := httpRequest(method, url, headers, *bytes.NewBuffer([]byte{}), &res)
+	err := httpRequest(method, url, headers, nil, &res)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %v", err)
 	}
@@ -152,17 +159,12 @@ func getBookingById(bookingId string, a Auth) (Booking, error) {
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return Booking{}, fmt.Errorf("failed to marshal payload: %v", err)
-	}
-
 	type Data struct {
 		GetBookingByBookingId Booking `json:"getBookingByBookingId"`
 	}
 	var response GqlResponse[Data]
 
-	err = httpRequest(method, url, nil, *bytes.NewBuffer(body), &response)
+	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
 		return Booking{}, fmt.Errorf("failed to get booking: %v", err)
 	}
@@ -186,12 +188,6 @@ func createBasket(booking Booking) (string, error) {
 	`
 	payload := GqlQuery{Query: query, Variables: booking}
 
-	// TODO: can i put this function into httpRequest?
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal payload: %v", err)
-	}
-
 	type Basket struct {
 		Id string `json:"id"`
 	}
@@ -200,7 +196,7 @@ func createBasket(booking Booking) (string, error) {
 	}
 	var response GqlResponse[Data]
 
-	err = httpRequest(method, url, nil, *bytes.NewBuffer(body), &response)
+	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
@@ -229,11 +225,6 @@ func getSeatsQuery(basketId string) error {
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %v", err)
-	}
-
 	type Seats []struct {
 		UnavailableSeats []string `json:"unavailableSeats"`
 	}
@@ -242,7 +233,7 @@ func getSeatsQuery(basketId string) error {
 	}
 	var response GqlResponse[Data]
 
-	err = httpRequest(method, url, nil, *bytes.NewBuffer(body), &response)
+	err := httpRequest(method, url, nil, payload, &response)
 	if err != nil {
 		return fmt.Errorf("failed to get seats: %v", err)
 	}
