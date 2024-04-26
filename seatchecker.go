@@ -131,7 +131,7 @@ type Booking struct {
 	SessionToken string `json:"sessionToken"`
 }
 
-func getBookingById(bookingId string, a Auth) (Booking, error) {
+func getBookingById(bookingId string, auth Auth) (Booking, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/bookingfa/en-gb/graphql"
 
@@ -153,9 +153,9 @@ func getBookingById(bookingId string, a Auth) (Booking, error) {
 	}{
 		BookingInfo: BookingInfo{
 			BookingId:   bookingId,
-			SurrogateId: a.CustomerID,
+			SurrogateId: auth.CustomerID,
 		},
-		AuthToken: a.Token,
+		AuthToken: auth.Token,
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
@@ -188,11 +188,10 @@ func createBasket(booking Booking) (string, error) {
 	`
 	payload := GqlQuery{Query: query, Variables: booking}
 
-	type Basket struct {
-		Id string `json:"id"`
-	}
 	type Data struct {
-		CreateBasketForActiveTrip Basket `json:"createBasketForActiveTrip"`
+		CreateBasketForActiveTrip struct {
+			Id string `json:"id"`
+		} `json:"createBasketForActiveTrip"`
 	}
 	var response GqlResponse[Data]
 
@@ -225,11 +224,10 @@ func getSeatsQuery(basketId string) error {
 	}
 	payload := GqlQuery{Query: query, Variables: variables}
 
-	type Seats []struct {
-		UnavailableSeats []string `json:"unavailableSeats"`
-	}
 	type Data struct {
-		Seats Seats `json:"seats"`
+		Seats []struct {
+			UnavailableSeats []string `json:"unavailableSeats"`
+		} `json:"seats"`
 	}
 	var response GqlResponse[Data]
 
