@@ -14,20 +14,22 @@ type Auth struct {
 	Token      string `json:"token"`
 }
 
-func httpRequest(method string, url string, headers http.Header, payload any, response any) error {
+func httpRequest[T any](method string, url string, headers http.Header, payload any) (T, error) {
+	var nilT T // Empty response for errors.
+
 	buf := []byte{}
 	var err error
 	if payload != nil {
 		buf, err = json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("failed to marshal payload: %v", err)
+			return nilT, fmt.Errorf("failed to marshal payload: %v", err)
 		}
 	}
 
 	c := &http.Client{}
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(buf))
 	if err != nil {
-		return fmt.Errorf("failed to form request: %v", err)
+		return nilT, fmt.Errorf("failed to form request: %v", err)
 	}
 
 	if headers != nil {
@@ -38,20 +40,21 @@ func httpRequest(method string, url string, headers http.Header, payload any, re
 
 	res, err := c.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to execute request: %v", err)
+		return nilT, fmt.Errorf("failed to execute request: %v", err)
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response: %v", err)
+		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
-	if err := json.Unmarshal(body, response); err != nil {
-		return fmt.Errorf("failed to unmarshal Json response: %v", err)
+	var response T
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
 	}
 
-	return nil
+	return response, nil
 }
 
 func accountLogin(email string, password string) (Auth, error) {
@@ -65,9 +68,7 @@ func accountLogin(email string, password string) (Auth, error) {
 		password,
 	}
 
-	var auth Auth
-
-	err := httpRequest(method, url, nil, payload, &auth)
+	auth, err := httpRequest[Auth](method, url, nil, payload)
 	if err != nil {
 		return Auth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
@@ -88,13 +89,13 @@ func (auth Auth) getOrders() (Flights, error) {
 	}
 
 	// TODO: how much stuff is in items?
-	var res struct {
+	type R struct {
 		Items []struct {
 			Flights Flights `json:"flights"`
 		} `json:"items"`
 	}
 
-	err := httpRequest(method, url, headers, nil, &res)
+	res, err := httpRequest[R](method, url, headers, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %v", err)
 	}
@@ -154,9 +155,8 @@ func (auth Auth) getBookingById(bookingId string) (Booking, error) {
 	type Data struct {
 		GetBookingByBookingId Booking `json:"getBookingByBookingId"`
 	}
-	var response GqlResponse[Data]
 
-	err := httpRequest(method, url, nil, payload, &response)
+	response, err := httpRequest[GqlResponse[Data]](method, url, nil, payload)
 	if err != nil {
 		return Booking{}, fmt.Errorf("failed to get booking: %v", err)
 	}
@@ -166,7 +166,7 @@ func (auth Auth) getBookingById(bookingId string) (Booking, error) {
 
 func createBasket(booking Booking) (string, error) {
 	method := "POST"
-	url := "https://www.ryanair.com/api/basketapi/en-ie/graphql"
+	url := "https://www.ryanair.com/api/basketapi/en-gb/graphql"
 
 	query := `
 		mutation CreateBasketForActiveTrip($tripId: String!, $sessionToken: String) {
@@ -185,9 +185,8 @@ func createBasket(booking Booking) (string, error) {
 			Id string `json:"id"`
 		} `json:"createBasketForActiveTrip"`
 	}
-	var response GqlResponse[Data]
 
-	err := httpRequest(method, url, nil, payload, &response)
+	response, err := httpRequest[GqlResponse[Data]](method, url, nil, payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
@@ -197,7 +196,7 @@ func createBasket(booking Booking) (string, error) {
 
 func getSeatsQuery(basketId string) error {
 	method := "POST"
-	url := "https://www.ryanair.com/api/catalogapi/en-ie/graphql"
+	url := "https://www.ryanair.com/api/catalogapi/en-gb/graphql"
 
 	query := `
 		query GetSeatsQuery($basketId: String!) {
@@ -221,9 +220,8 @@ func getSeatsQuery(basketId string) error {
 			UnavailableSeats []string `json:"unavailableSeats"`
 		} `json:"seats"`
 	}
-	var response GqlResponse[Data]
 
-	err := httpRequest(method, url, nil, payload, &response)
+	response, err := httpRequest[GqlResponse[Data]](method, url, nil, payload)
 	if err != nil {
 		return fmt.Errorf("failed to get seats: %v", err)
 	}
@@ -256,7 +254,6 @@ func main() {
 
 	bookingId, err := auth.getBookingId()
 	catchErr(err)
-	// fmt.Println(bookingId)
 
 	booking, err := auth.getBookingById(bookingId)
 	catchErr(err)
