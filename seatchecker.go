@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 )
 
@@ -82,25 +83,35 @@ type Flights []struct {
 
 func (auth Auth) getOrders() (Flights, error) {
 	method := "GET"
-	// TODO: look at flags
-	url := fmt.Sprintf("https://www.ryanair.com/api/orders/v2/orders/%s?active=true&order=ASC", auth.CustomerID)
+	url, err := url.Parse("https://www.ryanair.com/api/orders/v2/orders")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %v", err)
+	}
+	// Add Customer ID to the path.
+	url = url.JoinPath(auth.CustomerID)
+
+	// Specify query string parameters.
+	q := url.Query()
+	q.Add("active", "true")
+	q.Add("order", "ASC")
+	url.RawQuery = q.Encode()
+
 	headers := http.Header{
 		"x-auth-token": {auth.Token},
 	}
 
-	// TODO: how much stuff is in items?
 	type R struct {
 		Items []struct {
 			Flights Flights `json:"flights"`
 		} `json:"items"`
 	}
 
-	res, err := httpRequest[R](method, url, headers, nil)
+	res, err := httpRequest[R](method, url.String(), headers, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders: %v", err)
 	}
 
-	// TODO: base on what should i do filtering here?
+	// Items only contain single item.
 	return res.Items[0].Flights, nil
 }
 
@@ -109,7 +120,7 @@ func (auth Auth) getBookingId() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get booking id: %v", err)
 	}
-	// TODO: base on what should i do filtering here?
+	// Flights contains a single booking with multiple segments of flight.
 	return flights[0].BookingId, nil
 }
 
