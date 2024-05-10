@@ -76,15 +76,11 @@ func accountLogin(email string, password string) (Auth, error) {
 	return a, nil
 }
 
-type Flights []struct {
-	BookingId string `json:"bookingId"`
-}
-
-func (a Auth) getOrders() (Flights, error) {
+func (a Auth) getBookingId() (string, error) {
 	method := "GET"
 	url, err := url.Parse("https://www.ryanair.com/api/orders/v2/orders")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse URL: %v", err)
+		return "", fmt.Errorf("failed to parse URL: %v", err)
 	}
 	// Add Customer ID to the path.
 	url = url.JoinPath(a.CustomerID)
@@ -101,26 +97,20 @@ func (a Auth) getOrders() (Flights, error) {
 
 	type R struct {
 		Items []struct {
-			Flights Flights `json:"flights"`
+			Flights []struct {
+				BookingId string `json:"bookingId"`
+			} `json:"flights"`
 		} `json:"items"`
 	}
 
 	res, err := httpRequest[R](method, url.String(), h, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get orders: %v", err)
+		return "", fmt.Errorf("failed to get orders: %v", err)
 	}
 
 	// Items only contain single item.
-	return res.Items[0].Flights, nil
-}
-
-func (a Auth) getBookingId() (string, error) {
-	flights, err := a.getOrders()
-	if err != nil {
-		return "", fmt.Errorf("failed to get booking id: %v", err)
-	}
 	// Flights contain a single booking with multiple segments of flight.
-	return flights[0].BookingId, nil
+	return res.Items[0].Flights[0].BookingId, nil
 }
 
 type GqlQuery struct {
