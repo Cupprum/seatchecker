@@ -10,46 +10,102 @@ import (
 	"os"
 )
 
-func httpRequest[T any](method string, url string, headers http.Header, payload any) (T, error) {
-	var nilT T // Empty response for errors.
+type RClient struct {
+	fqdn string
+}
+
+type Request struct {
+	method      string
+	schema      string
+	fqdn        string
+	path        string
+	queryParams url.Values
+	headers     http.Header
+	body        any
+}
+
+func (r Request) creator() (*http.Request, error) {
+	u, err := url.Parse(r.fqdn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %v", err)
+	}
+	u = u.JoinPath(r.path)              // Specify path.
+	u.Scheme = r.schema                 // Specify schema.
+	u.RawQuery = r.queryParams.Encode() // Specify query string parameters.
 
 	buf := []byte{} // If payload not specified, send empty buffer.
-	var err error
-	if payload != nil {
-		buf, err = json.Marshal(payload)
+	if r.body != nil {
+		buf, err = json.Marshal(r.body)
 		if err != nil {
-			return nilT, fmt.Errorf("failed to marshal payload: %v", err)
+			return nil, fmt.Errorf("failed to marshal payload: %v", err)
 		}
 	}
 
-	c := &http.Client{}
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(buf))
+	req, err := http.NewRequest(r.method, u.String(), bytes.NewBuffer(buf))
 	if err != nil {
-		return nilT, fmt.Errorf("failed to form request: %v", err)
+		return nil, fmt.Errorf("failed to form request: %v", err)
 	}
 
-	if headers != nil {
-		req.Header = headers
+	if r.headers != nil {
+		req.Header = r.headers
 	}
 	req.Header.Add("Content-Type", "application/json") // Add default headers
 
-	res, err := c.Do(req)
+	return req, nil
+}
+
+func httpsRequest[T any](req Request) (T, error) {
+	var nilT T // Empty response for errors.
+
+	r, err := req.creator()
+	if err != nil {
+		return nilT, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	c := &http.Client{}
+	res, err := c.Do(r)
 	if err != nil {
 		return nilT, fmt.Errorf("failed to execute request: %v", err)
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
 	var t T
-	if err := json.Unmarshal(body, &t); err != nil {
+	if err := json.Unmarshal(b, &t); err != nil {
 		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
 	}
 
 	return t, nil
+}
+
+func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
+	r := Request{
+		"GET",
+		"https",
+		c.fqdn,
+		path,
+		queryParams,
+		headers,
+		body,
+	}
+	return httpsRequest[T](r)
+}
+
+func httpsRequestPost[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
+	r := Request{
+		"POST",
+		"https",
+		c.fqdn,
+		path,
+		queryParams,
+		headers,
+		body,
+	}
+	return httpsRequest[T](r)
 }
 
 type CAuth struct {
@@ -57,10 +113,10 @@ type CAuth struct {
 	Token      string `json:"token"`
 }
 
-func accountLogin(email string, password string) (CAuth, error) {
-	method := "POST"
-	url := "https://www.ryanair.com/api/usrprof/v2/accountLogin"
-	p := struct {
+func (c RClient) accountLogin(email string, password string) (CAuth, error) {
+	p := "api/usrprof/v2/accountLogin"
+
+	b := struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}{
@@ -68,7 +124,7 @@ func accountLogin(email string, password string) (CAuth, error) {
 		password,
 	}
 
-	a, err := httpRequest[CAuth](method, url, nil, p)
+	a, err := httpsRequestPost[CAuth](c, p, nil, nil, b)
 	if err != nil {
 		return CAuth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
@@ -76,20 +132,15 @@ func accountLogin(email string, password string) (CAuth, error) {
 	return a, nil
 }
 
-func (a CAuth) getBookingId() (string, error) {
-	method := "GET"
-	url, err := url.Parse("https://www.ryanair.com/api/orders/v2/orders")
+func (c RClient) getBookingId(a CAuth) (string, error) {
+	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse URL: %v", err)
+		return "", fmt.Errorf("failed to create path: %v", err)
 	}
-	// Add Customer ID to the path.
-	url = url.JoinPath(a.CustomerID)
 
-	// Specify query string parameters.
-	q := url.Query()
+	q := url.Values{}
 	q.Add("active", "true")
 	q.Add("order", "ASC")
-	url.RawQuery = q.Encode()
 
 	h := http.Header{
 		"x-auth-token": {a.Token},
@@ -103,14 +154,14 @@ func (a CAuth) getBookingId() (string, error) {
 		} `json:"items"`
 	}
 
-	res, err := httpRequest[R](method, url.String(), h, nil)
+	r, err := httpsRequestGet[R](c, p, q, h, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to get orders: %v", err)
 	}
 
 	// Items only contain single item.
 	// Flights contain a single booking with multiple segments of flight.
-	return res.Items[0].Flights[0].BookingId, nil
+	return r.Items[0].Flights[0].BookingId, nil
 }
 
 type GqlQuery struct {
@@ -127,9 +178,8 @@ type BAuth struct {
 	SessionToken string `json:"sessionToken"`
 }
 
-func (a CAuth) getBookingById(bookingId string) (BAuth, error) {
-	method := "POST"
-	url := "https://www.ryanair.com/api/bookingfa/en-gb/graphql"
+func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
+	p := "api/bookingfa/en-gb/graphql"
 
 	q := `
 		query GetBookingByBookingId($bookingInfo: GetBookingByBookingIdInputType, $authToken: String!) {
@@ -150,25 +200,24 @@ func (a CAuth) getBookingById(bookingId string) (BAuth, error) {
 		BookingInfo{bookingId, a.CustomerID},
 		a.Token,
 	}
-	p := GqlQuery{Query: q, Variables: v}
+	b := GqlQuery{Query: q, Variables: v}
 
 	type Data struct {
 		GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 	}
 
-	res, err := httpRequest[GqlResponse[Data]](method, url, nil, p)
+	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
 	if err != nil {
 		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
 
-	return res.Data.GetBookingByBookingId, nil
+	return r.Data.GetBookingByBookingId, nil
 }
 
-func (a BAuth) createBasket() (string, error) {
-	method := "POST"
-	url := "https://www.ryanair.com/api/basketapi/en-gb/graphql"
+func (c RClient) createBasket(a BAuth) (string, error) {
+	p := "api/basketapi/en-gb/graphql"
 
-	query := `
+	q := `
 		mutation CreateBasketForActiveTrip($tripId: String!, $sessionToken: String) {
 			createBasketForActiveTrip(tripId: $tripId, sessionToken: $sessionToken) {
 				...BasketCommon
@@ -178,7 +227,7 @@ func (a BAuth) createBasket() (string, error) {
 			id
 		}
 	`
-	payload := GqlQuery{Query: query, Variables: a}
+	b := GqlQuery{Query: q, Variables: a}
 
 	type Data struct {
 		Basket struct {
@@ -186,19 +235,18 @@ func (a BAuth) createBasket() (string, error) {
 		} `json:"createBasketForActiveTrip"`
 	}
 
-	res, err := httpRequest[GqlResponse[Data]](method, url, nil, payload)
+	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
 
-	return res.Data.Basket.Id, nil
+	return r.Data.Basket.Id, nil
 }
 
-func getSeatsQuery(basketId string) error {
-	method := "POST"
-	url := "https://www.ryanair.com/api/catalogapi/en-gb/graphql"
+func (c RClient) getSeatsQuery(basketId string) error {
+	p := "api/catalogapi/en-gb/graphql"
 
-	query := `
+	q := `
 		query GetSeatsQuery($basketId: String!) {
 			seats(basketId: $basketId) {
 				...SeatsResponse
@@ -208,12 +256,12 @@ func getSeatsQuery(basketId string) error {
 			unavailableSeats
 		}
 	`
-	variables := struct {
+	v := struct {
 		BId string `json:"basketId"`
 	}{
 		basketId,
 	}
-	payload := GqlQuery{Query: query, Variables: variables}
+	b := GqlQuery{Query: q, Variables: v}
 
 	type Data struct {
 		Seats []struct {
@@ -221,12 +269,12 @@ func getSeatsQuery(basketId string) error {
 		} `json:"seats"`
 	}
 
-	res, err := httpRequest[GqlResponse[Data]](method, url, nil, payload)
+	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
 	if err != nil {
 		return fmt.Errorf("failed to get seats: %v", err)
 	}
 
-	fmt.Println(res)
+	fmt.Println(r)
 	return nil
 }
 
@@ -249,18 +297,20 @@ func main() {
 		}
 	}
 
-	cAuth, err := accountLogin(email, password)
+	client := RClient{fqdn: "www.ryanair.com"}
+
+	cAuth, err := client.accountLogin(email, password)
 	catchErr(err)
 
-	bookingId, err := cAuth.getBookingId()
+	bookingId, err := client.getBookingId(cAuth)
 	catchErr(err)
 
-	bAuth, err := cAuth.getBookingById(bookingId)
+	bAuth, err := client.getBookingById(cAuth, bookingId)
 	catchErr(err)
 
-	basketId, err := bAuth.createBasket()
+	basketId, err := client.createBasket(bAuth)
 	catchErr(err)
 
-	err = getSeatsQuery(basketId)
+	err = client.getSeatsQuery(basketId)
 	catchErr(err)
 }
