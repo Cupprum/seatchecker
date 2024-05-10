@@ -52,12 +52,12 @@ func httpRequest[T any](method string, url string, headers http.Header, payload 
 	return t, nil
 }
 
-type Auth struct {
+type CAuth struct {
 	CustomerID string `json:"customerId"`
 	Token      string `json:"token"`
 }
 
-func accountLogin(email string, password string) (Auth, error) {
+func accountLogin(email string, password string) (CAuth, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/usrprof/v2/accountLogin"
 	p := struct {
@@ -68,15 +68,15 @@ func accountLogin(email string, password string) (Auth, error) {
 		password,
 	}
 
-	a, err := httpRequest[Auth](method, url, nil, p)
+	a, err := httpRequest[CAuth](method, url, nil, p)
 	if err != nil {
-		return Auth{}, fmt.Errorf("failed to get account login: %v", err)
+		return CAuth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
 
 	return a, nil
 }
 
-func (a Auth) getBookingId() (string, error) {
+func (a CAuth) getBookingId() (string, error) {
 	method := "GET"
 	url, err := url.Parse("https://www.ryanair.com/api/orders/v2/orders")
 	if err != nil {
@@ -122,12 +122,12 @@ type GqlResponse[T any] struct {
 	Data T `json:"data"`
 }
 
-type Booking struct {
+type BAuth struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
 }
 
-func (a Auth) getBookingById(bookingId string) (Booking, error) {
+func (a CAuth) getBookingById(bookingId string) (BAuth, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/bookingfa/en-gb/graphql"
 
@@ -153,18 +153,18 @@ func (a Auth) getBookingById(bookingId string) (Booking, error) {
 	p := GqlQuery{Query: q, Variables: v}
 
 	type Data struct {
-		GetBookingByBookingId Booking `json:"getBookingByBookingId"`
+		GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 	}
 
 	res, err := httpRequest[GqlResponse[Data]](method, url, nil, p)
 	if err != nil {
-		return Booking{}, fmt.Errorf("failed to get booking: %v", err)
+		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
 
 	return res.Data.GetBookingByBookingId, nil
 }
 
-func createBasket(booking Booking) (string, error) {
+func (a BAuth) createBasket() (string, error) {
 	method := "POST"
 	url := "https://www.ryanair.com/api/basketapi/en-gb/graphql"
 
@@ -178,7 +178,7 @@ func createBasket(booking Booking) (string, error) {
 			id
 		}
 	`
-	payload := GqlQuery{Query: query, Variables: booking}
+	payload := GqlQuery{Query: query, Variables: a}
 
 	type Data struct {
 		Basket struct {
@@ -249,16 +249,16 @@ func main() {
 		}
 	}
 
-	auth, err := accountLogin(email, password)
+	cAuth, err := accountLogin(email, password)
 	catchErr(err)
 
-	bookingId, err := auth.getBookingId()
+	bookingId, err := cAuth.getBookingId()
 	catchErr(err)
 
-	booking, err := auth.getBookingById(bookingId)
+	bAuth, err := cAuth.getBookingById(bookingId)
 	catchErr(err)
 
-	basketId, err := createBasket(booking)
+	basketId, err := bAuth.createBasket()
 	catchErr(err)
 
 	err = getSeatsQuery(basketId)
