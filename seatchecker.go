@@ -11,7 +11,8 @@ import (
 )
 
 type RClient struct {
-	fqdn string
+	schema string
+	fqdn   string
 }
 
 type Request struct {
@@ -74,6 +75,8 @@ func httpsRequest[T any](req Request) (T, error) {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
+	fmt.Println(string(b))
+
 	var t T
 	if err := json.Unmarshal(b, &t); err != nil {
 		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
@@ -85,7 +88,7 @@ func httpsRequest[T any](req Request) (T, error) {
 func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
 	r := Request{
 		"GET",
-		"https",
+		c.schema,
 		c.fqdn,
 		path,
 		queryParams,
@@ -98,7 +101,7 @@ func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, head
 func httpsRequestPost[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
 	r := Request{
 		"POST",
-		"https",
+		c.schema,
 		c.fqdn,
 		path,
 		queryParams,
@@ -297,20 +300,26 @@ func main() {
 		}
 	}
 
-	client := RClient{fqdn: "www.ryanair.com"}
+	client := RClient{
+		schema: "https",
+		fqdn:   "www.ryanair.com",
+	}
 
 	cAuth, err := client.accountLogin(email, password)
 	catchErr(err)
 
-	bookingId, err := client.getBookingId(cAuth)
-	catchErr(err)
+	fmt.Println("test")
+	fmt.Println(cAuth)
 
-	bAuth, err := client.getBookingById(cAuth, bookingId)
-	catchErr(err)
+	// bookingId, err := client.getBookingId(cAuth)
+	// catchErr(err)
 
-	basketId, err := client.createBasket(bAuth)
-	catchErr(err)
+	// bAuth, err := client.getBookingById(cAuth, bookingId)
+	// catchErr(err)
 
-	err = client.getSeatsQuery(basketId)
-	catchErr(err)
+	// basketId, err := client.createBasket(bAuth)
+	// catchErr(err)
+
+	// err = client.getSeatsQuery(basketId)
+	// catchErr(err)
 }
