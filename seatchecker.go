@@ -214,6 +214,10 @@ func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
 		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
 
+	// TODO: this is a bug, 'r' should not be allowed to be empty...
+	fmt.Println("Test1")
+	fmt.Println(r)
+
 	return r.Data.GetBookingByBookingId, nil
 }
 
