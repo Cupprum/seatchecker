@@ -75,8 +75,6 @@ func httpsRequest[T any](req Request) (T, error) {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
-	fmt.Println(string(b))
-
 	var t T
 	if err := json.Unmarshal(b, &t); err != nil {
 		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
@@ -135,6 +133,16 @@ func (c RClient) accountLogin(email string, password string) (CAuth, error) {
 	return a, nil
 }
 
+type BIdFlight struct {
+	BookingId string `json:"bookingId"`
+}
+type BIdItem struct {
+	Flights []BIdFlight `json:"flights"`
+}
+type BIdResp struct {
+	Items []BIdItem `json:"items"`
+}
+
 func (c RClient) getBookingId(a CAuth) (string, error) {
 	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
@@ -146,18 +154,10 @@ func (c RClient) getBookingId(a CAuth) (string, error) {
 	q.Add("order", "ASC")
 
 	h := http.Header{
-		"x-auth-token": {a.Token},
+		"X-Auth-Token": {a.Token},
 	}
 
-	type R struct {
-		Items []struct {
-			Flights []struct {
-				BookingId string `json:"bookingId"`
-			} `json:"flights"`
-		} `json:"items"`
-	}
-
-	r, err := httpsRequestGet[R](c, p, q, h, nil)
+	r, err := httpsRequestGet[BIdResp](c, p, q, h, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to get orders: %v", err)
 	}
@@ -308,18 +308,15 @@ func main() {
 	cAuth, err := client.accountLogin(email, password)
 	catchErr(err)
 
-	fmt.Println("test")
-	fmt.Println(cAuth)
+	bookingId, err := client.getBookingId(cAuth)
+	catchErr(err)
 
-	// bookingId, err := client.getBookingId(cAuth)
-	// catchErr(err)
+	bAuth, err := client.getBookingById(cAuth, bookingId)
+	catchErr(err)
 
-	// bAuth, err := client.getBookingById(cAuth, bookingId)
-	// catchErr(err)
+	basketId, err := client.createBasket(bAuth)
+	catchErr(err)
 
-	// basketId, err := client.createBasket(bAuth)
-	// catchErr(err)
-
-	// err = client.getSeatsQuery(basketId)
-	// catchErr(err)
+	err = client.getSeatsQuery(basketId)
+	catchErr(err)
 }

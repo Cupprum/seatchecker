@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -37,5 +38,51 @@ func TestAccountLogin(t *testing.T) {
 
 	if cAReq != cARes {
 		t.Fatalf("wrong response, expected: %v, received %v", cAReq, cARes)
+	}
+}
+
+func TestGetBookingId(t *testing.T) {
+	cAReq := CAuth{"customerid", "token"}
+	eId := "booking_id"
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
+		if !strings.Contains(r.URL.Path, cAReq.CustomerID) {
+			t.Fatalf("missing Customer ID in URL, received URL Path: %v", r.URL.Path)
+		}
+		rT := r.Header["X-Auth-Token"][0]
+		if cAReq.Token != rT {
+			t.Fatalf("invalid auth token, expected: %v, received: %v", cAReq.Token, rT)
+		}
+		if !strings.Contains(r.URL.RawQuery, "active=true") {
+			t.Fatalf("missing url encoded query string parameter, name: active")
+		}
+		if !strings.Contains(r.URL.RawQuery, "order=ASC") {
+			t.Fatalf("missing url encoded query string parameter, name: order")
+		}
+
+		// Create fake response
+		rres := BIdResp{
+			Items: []BIdItem{
+				{
+					Flights: []BIdFlight{
+						{BookingId: eId},
+					},
+				},
+			},
+		}
+		res, _ := json.Marshal(rres)
+		fmt.Fprintln(w, string(res))
+	}))
+	defer ts.Close()
+
+	// Check received response
+	c := RClient{schema: "http", fqdn: ts.URL}
+	rId, err := c.getBookingId(cAReq)
+	if err != nil {
+		t.Fatalf("failed to get booking id: %v", err)
+	}
+	if eId != rId {
+		t.Fatalf("wrong booking id, expected: %v, received %v", eId, rId)
 	}
 }
