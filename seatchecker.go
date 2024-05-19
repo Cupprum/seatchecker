@@ -253,6 +253,10 @@ func (c RClient) createBasket(a BAuth) (string, error) {
 	return r.Data.Basket.Id, nil
 }
 
+type SQData struct {
+	BId string `json:"basketId"`
+}
+
 func (c RClient) getSeatsQuery(basketId string) error {
 	p := "api/catalogapi/en-gb/graphql"
 
@@ -266,14 +270,10 @@ func (c RClient) getSeatsQuery(basketId string) error {
 			unavailableSeats
 		}
 	`
-	type Basket struct {
-		BId string `json:"basketId"`
-	}
-
-	v := Basket{
+	v := SQData{
 		basketId,
 	}
-	b := GqlQuery[Basket]{Query: q, Variables: v}
+	b := GqlQuery[SQData]{Query: q, Variables: v}
 
 	type Data struct {
 		Seats []struct {
