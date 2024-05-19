@@ -222,6 +222,14 @@ func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
 	return r.Data.GetBookingByBookingId, nil
 }
 
+type BBasket struct {
+	Id string `json:"id"`
+}
+
+type BData struct {
+	Basket BBasket `json:"createBasketForActiveTrip"`
+}
+
 func (c RClient) createBasket(a BAuth) (string, error) {
 	p := "api/basketapi/en-gb/graphql"
 
@@ -237,13 +245,7 @@ func (c RClient) createBasket(a BAuth) (string, error) {
 	`
 	b := GqlQuery[BAuth]{Query: q, Variables: a}
 
-	type Data struct {
-		Basket struct {
-			Id string `json:"id"`
-		} `json:"createBasketForActiveTrip"`
-	}
-
-	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[BData]](c, p, nil, nil, b)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
