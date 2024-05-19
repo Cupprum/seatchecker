@@ -75,6 +75,8 @@ func httpsRequest[T any](req Request) (T, error) {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
+	// fmt.Println(string(b))
+
 	var t T
 	if err := json.Unmarshal(b, &t); err != nil {
 		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
@@ -167,9 +169,9 @@ func (c RClient) getBookingId(a CAuth) (string, error) {
 	return r.Items[0].Flights[0].BookingId, nil
 }
 
-type GqlQuery struct {
+type GqlQuery[T any] struct {
 	Query     string `json:"query"`
-	Variables any    `json:"variables"`
+	Variables T      `json:"variables"`
 }
 
 type GqlResponse[T any] struct {
@@ -179,6 +181,20 @@ type GqlResponse[T any] struct {
 type BAuth struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
+}
+
+type BBIdInfo struct {
+	BookingId   string `json:"bookingId"`
+	SurrogateId string `json:"surrogateId"`
+}
+
+type BBIdVars struct {
+	BookingInfo BBIdInfo `json:"bookingInfo"`
+	AuthToken   string   `json:"authToken"`
+}
+
+type BBIdData struct {
+	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 }
 
 func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
@@ -192,31 +208,16 @@ func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
 			}
 		}
 	`
-	type BookingInfo struct {
-		BookingId   string `json:"bookingId"`
-		SurrogateId string `json:"surrogateId"`
-	}
-	v := struct {
-		BookingInfo BookingInfo `json:"bookingInfo"`
-		AuthToken   string      `json:"authToken"`
-	}{
-		BookingInfo{bookingId, a.CustomerID},
+	v := BBIdVars{
+		BBIdInfo{bookingId, a.CustomerID},
 		a.Token,
 	}
-	b := GqlQuery{Query: q, Variables: v}
+	b := GqlQuery[BBIdVars]{Query: q, Variables: v}
 
-	type Data struct {
-		GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
-	}
-
-	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[BBIdData]](c, p, nil, nil, b)
 	if err != nil {
 		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
-
-	// TODO: this is a bug, 'r' should not be allowed to be empty...
-	fmt.Println("Test1")
-	fmt.Println(r)
 
 	return r.Data.GetBookingByBookingId, nil
 }
@@ -234,7 +235,7 @@ func (c RClient) createBasket(a BAuth) (string, error) {
 			id
 		}
 	`
-	b := GqlQuery{Query: q, Variables: a}
+	b := GqlQuery[BAuth]{Query: q, Variables: a}
 
 	type Data struct {
 		Basket struct {
@@ -263,12 +264,14 @@ func (c RClient) getSeatsQuery(basketId string) error {
 			unavailableSeats
 		}
 	`
-	v := struct {
+	type Basket struct {
 		BId string `json:"basketId"`
-	}{
+	}
+
+	v := Basket{
 		basketId,
 	}
-	b := GqlQuery{Query: q, Variables: v}
+	b := GqlQuery[Basket]{Query: q, Variables: v}
 
 	type Data struct {
 		Seats []struct {
