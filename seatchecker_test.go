@@ -123,3 +123,38 @@ func TestGetBookingById(t *testing.T) {
 		t.Fatalf("wrong trip id, expected: trip_id, received %v", bA.TripId)
 	}
 }
+
+func TestCreateBasket(t *testing.T) {
+	bA := BAuth{"trip_id", "session_token"}
+	eId := "basket_id"
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
+		rawB, _ := io.ReadAll(r.Body)
+		b := GqlQuery[BAuth]{}
+		json.Unmarshal(rawB, &b)
+
+		if !reflect.DeepEqual(bA, b.Variables) {
+			t.Fatalf("wrong payload, expected: %v, received: %v", bA, b.Variables)
+		}
+
+		// Create fake response
+		rres := GqlResponse[BData]{
+			Data: BData{Basket: BBasket{Id: eId}},
+		}
+		res, _ := json.Marshal(rres)
+		fmt.Fprintln(w, string(res))
+	}))
+	defer ts.Close()
+
+	// Check received response
+	c := RClient{schema: "http", fqdn: ts.URL}
+
+	bId, err := c.createBasket(bA)
+	if err != nil {
+		t.Fatalf("failed to create basket: %v", err)
+	}
+	if eId != bId {
+		t.Fatalf("wrong basket id, expected: %v, received %v", eId, bId)
+	}
+}
