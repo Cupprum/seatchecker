@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -84,5 +85,41 @@ func TestGetBookingId(t *testing.T) {
 	}
 	if eId != rId {
 		t.Fatalf("wrong booking id, expected: %v, received %v", eId, rId)
+	}
+}
+
+func TestGetBookingById(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
+		rawB, _ := io.ReadAll(r.Body)
+		b := GqlQuery[BBIdVars]{}
+		json.Unmarshal(rawB, &b)
+
+		v := BBIdVars{AuthToken: "token", BookingInfo: BBIdInfo{BookingId: "booking_id", SurrogateId: "customerid"}}
+		if !reflect.DeepEqual(v, b.Variables) {
+			t.Fatalf("wrong payload, expected: %v, received: %v", v, b.Variables)
+		}
+
+		// Create fake response
+		rres := GqlResponse[BBIdData]{
+			Data: BBIdData{GetBookingByBookingId: BAuth{TripId: "trip_id", SessionToken: "session_token"}},
+		}
+		res, _ := json.Marshal(rres)
+		fmt.Fprintln(w, string(res))
+	}))
+	defer ts.Close()
+
+	// Check received response
+	c := RClient{schema: "http", fqdn: ts.URL}
+	cAReq := CAuth{"customerid", "token"}
+	bA, err := c.getBookingById(cAReq, "booking_id")
+	if err != nil {
+		t.Fatalf("failed to get booking: %v", err)
+	}
+	if bA.SessionToken != "session_token" {
+		t.Fatalf("wrong session token, expected: session_token, received %v", bA.SessionToken)
+	}
+	if bA.TripId != "trip_id" {
+		t.Fatalf("wrong trip id, expected: trip_id, received %v", bA.TripId)
 	}
 }
