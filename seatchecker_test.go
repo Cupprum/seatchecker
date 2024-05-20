@@ -158,3 +158,40 @@ func TestCreateBasket(t *testing.T) {
 		t.Fatalf("wrong basket id, expected: %v, received %v", eId, bId)
 	}
 }
+
+func TestGetSeatsQuery(t *testing.T) {
+	bId := "basket_id"
+	s := []string{"01A", "01B", "01C"}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
+		rawB, _ := io.ReadAll(r.Body)
+		b := GqlQuery[SQBasket]{}
+		json.Unmarshal(rawB, &b)
+
+		if bId != b.Variables.BId {
+			t.Fatalf("wrong payload, expected: %v, received: %v", bId, b.Variables)
+		}
+
+		// Create fake response
+		rres := GqlResponse[SQData]{
+			Data: SQData{Seats: []SQSeats{{UnavailableSeats: s}}},
+		}
+
+		res, _ := json.Marshal(rres)
+		fmt.Fprintln(w, string(res))
+	}))
+	defer ts.Close()
+
+	// Check received response
+	c := RClient{schema: "http", fqdn: ts.URL}
+
+	qs, err := c.getSeatsQuery(bId)
+	if err != nil {
+		t.Fatalf("failed to query seats: %v", err)
+	}
+
+	if !reflect.DeepEqual(s, qs) {
+		t.Fatalf("wrong seats, expected: %v, received: %v", s, qs)
+	}
+}
