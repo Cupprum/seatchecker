@@ -83,7 +83,7 @@ func httpsRequest[T any](req Request) (T, error) {
 	return t, nil
 }
 
-func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
+func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header) (T, error) {
 	r := Request{
 		"GET",
 		c.schema,
@@ -91,19 +91,19 @@ func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, head
 		path,
 		queryParams,
 		headers,
-		body,
+		nil,
 	}
 	return httpsRequest[T](r)
 }
 
-func httpsRequestPost[T any](c RClient, path string, queryParams url.Values, headers http.Header, body any) (T, error) {
+func httpsRequestPost[T any](c RClient, path string, body any) (T, error) {
 	r := Request{
 		"POST",
 		c.schema,
 		c.fqdn,
 		path,
-		queryParams,
-		headers,
+		nil,
+		nil,
 		body,
 	}
 	return httpsRequest[T](r)
@@ -125,7 +125,7 @@ func (c RClient) accountLogin(email string, password string) (CAuth, error) {
 		password,
 	}
 
-	a, err := httpsRequestPost[CAuth](c, p, nil, nil, b)
+	a, err := httpsRequestPost[CAuth](c, p, b)
 	if err != nil {
 		return CAuth{}, fmt.Errorf("failed to get account login: %v", err)
 	}
@@ -157,7 +157,7 @@ func (c RClient) getBookingId(a CAuth) (string, error) {
 		"X-Auth-Token": {a.Token},
 	}
 
-	r, err := httpsRequestGet[BIdResp](c, p, q, h, nil)
+	r, err := httpsRequestGet[BIdResp](c, p, q, h)
 	if err != nil {
 		return "", fmt.Errorf("failed to get orders: %v", err)
 	}
@@ -212,7 +212,7 @@ func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
 	}
 	b := GqlQuery[BBIdVars]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[BBIdData]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[BBIdData]](c, p, b)
 	if err != nil {
 		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
@@ -243,7 +243,7 @@ func (c RClient) createBasket(a BAuth) (string, error) {
 	`
 	b := GqlQuery[BAuth]{Query: q, Variables: a}
 
-	r, err := httpsRequestPost[GqlResponse[BData]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[BData]](c, p, b)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
@@ -281,7 +281,7 @@ func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 	}
 	b := GqlQuery[SQBasket]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[SQData]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[SQData]](c, p, b)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get seats: %v", err)
 	}
