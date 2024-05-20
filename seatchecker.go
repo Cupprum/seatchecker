@@ -75,8 +75,6 @@ func httpsRequest[T any](req Request) (T, error) {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
 	}
 
-	// fmt.Println(string(b))
-
 	var t T
 	if err := json.Unmarshal(b, &t); err != nil {
 		return nilT, fmt.Errorf("failed to unmarshal Json response: %v", err)
@@ -253,11 +251,19 @@ func (c RClient) createBasket(a BAuth) (string, error) {
 	return r.Data.Basket.Id, nil
 }
 
-type SQData struct {
+type SQBasket struct {
 	BId string `json:"basketId"`
 }
 
-func (c RClient) getSeatsQuery(basketId string) error {
+type SQSeats struct {
+	UnavailableSeats []string `json:"unavailableSeats"`
+}
+
+type SQData struct {
+	Seats []SQSeats `json:"seats"`
+}
+
+func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 	p := "api/catalogapi/en-gb/graphql"
 
 	q := `
@@ -270,24 +276,18 @@ func (c RClient) getSeatsQuery(basketId string) error {
 			unavailableSeats
 		}
 	`
-	v := SQData{
+	v := SQBasket{
 		basketId,
 	}
-	b := GqlQuery[SQData]{Query: q, Variables: v}
+	b := GqlQuery[SQBasket]{Query: q, Variables: v}
 
-	type Data struct {
-		Seats []struct {
-			UnavailableSeats []string `json:"unavailableSeats"`
-		} `json:"seats"`
-	}
-
-	r, err := httpsRequestPost[GqlResponse[Data]](c, p, nil, nil, b)
+	r, err := httpsRequestPost[GqlResponse[SQData]](c, p, nil, nil, b)
 	if err != nil {
-		return fmt.Errorf("failed to get seats: %v", err)
+		return nil, fmt.Errorf("failed to get seats: %v", err)
 	}
 
-	fmt.Println(r)
-	return nil
+	// TODO: what is this supposed to return? always first? what if i ma on the way back?
+	return r.Data.Seats[0].UnavailableSeats, nil
 }
 
 func main() {
@@ -326,6 +326,8 @@ func main() {
 	basketId, err := client.createBasket(bAuth)
 	catchErr(err)
 
-	err = client.getSeatsQuery(basketId)
+	seats, err := client.getSeatsQuery(basketId)
 	catchErr(err)
+
+	fmt.Println(seats)
 }
