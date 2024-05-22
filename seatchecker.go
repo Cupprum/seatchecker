@@ -11,13 +11,13 @@ import (
 )
 
 type RClient struct {
-	schema string
+	scheme string
 	fqdn   string
 }
 
 type Request struct {
 	method      string
-	schema      string
+	scheme      string
 	fqdn        string
 	path        string
 	queryParams url.Values
@@ -31,7 +31,7 @@ func (r Request) creator() (*http.Request, error) {
 		return nil, fmt.Errorf("failed to parse URL: %v", err)
 	}
 	u = u.JoinPath(r.path)              // Specify path.
-	u.Scheme = r.schema                 // Specify schema.
+	u.Scheme = r.scheme                 // Specify scheme.
 	u.RawQuery = r.queryParams.Encode() // Specify query string parameters.
 
 	buf := []byte{} // If payload not specified, send empty buffer.
@@ -86,7 +86,7 @@ func httpsRequest[T any](req Request) (T, error) {
 func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header) (T, error) {
 	r := Request{
 		"GET",
-		c.schema,
+		c.scheme,
 		c.fqdn,
 		path,
 		queryParams,
@@ -99,7 +99,7 @@ func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, head
 func httpsRequestPost[T any](c RClient, path string, body any) (T, error) {
 	r := Request{
 		"POST",
-		c.schema,
+		c.scheme,
 		c.fqdn,
 		path,
 		nil,
@@ -310,7 +310,7 @@ func main() {
 	}
 
 	client := RClient{
-		schema: "https",
+		scheme: "https",
 		fqdn:   "www.ryanair.com",
 	}
 
