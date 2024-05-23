@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 type RClient struct {
@@ -290,7 +293,7 @@ func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 	return r.Data.Seats[0].UnavailableSeats, nil
 }
 
-func main() {
+func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	email := os.Getenv("SEATCHECKER_EMAIL")
 	if email == "" {
 		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_EMAIL' is not configured")
@@ -330,4 +333,8 @@ func main() {
 	catchErr(err)
 
 	fmt.Println(seats)
+}
+
+func main() {
+	lambda.Start(handler)
 }
