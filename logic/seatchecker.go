@@ -318,7 +318,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	cAuth, err := client.accountLogin(email, password)
-	catchErr(err)
+	catchErr(err) // TODO: probably i will have to rething exceptions
 
 	bookingId, err := client.getBookingId(cAuth)
 	catchErr(err)
@@ -333,6 +333,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	catchErr(err)
 
 	fmt.Println(seats)
+	return events.APIGatewayProxyResponse{
+		Body:       fmt.Sprintln(seats),
+		StatusCode: 200,
+	}, nil
 }
 
 func main() {
