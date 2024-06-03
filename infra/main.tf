@@ -33,7 +33,7 @@ resource "aws_iam_role" "iam_for_lambda" {
 resource "aws_lambda_function" "test_lambda" {
   # If the file is not in the current working directory you will need to include a
   # path.module in the filename.
-  filename      = "seatChecker.zip"
+  filename      = "../out/seatChecker.zip"
   function_name = "seat_checker"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "bootstrap"

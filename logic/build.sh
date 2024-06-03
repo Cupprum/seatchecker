@@ -6,3 +6,5 @@ zip seatChecker.zip bootstrap
 
 # cleanup binary
 rm bootstrap
+
+mv seatChecker.zip ../out/seatChecker.zip
