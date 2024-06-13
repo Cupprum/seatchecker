@@ -7,7 +7,6 @@ terraform {
   }
 }
 
-# Configure the AWS Provider
 provider "aws" {
   region = "eu-central-1"
 }
@@ -33,7 +32,7 @@ resource "aws_iam_role" "iam_for_lambda" {
 resource "aws_lambda_function" "test_lambda" {
   # If the file is not in the current working directory you will need to include a
   # path.module in the filename.
-  filename      = "../out/seatChecker.zip"
+  filename      = "/out/seatchecker.zip"
   function_name = "seat_checker"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "bootstrap"
