@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-dagger call deploy
+dagger call deploy --source="../../logic"
