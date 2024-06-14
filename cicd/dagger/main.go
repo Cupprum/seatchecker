@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 )
 
 type Cicd struct{}
@@ -57,13 +56,8 @@ func (m *Cicd) Run(ctx context.Context,
 	logic *Directory, infra *Directory,
 	access_key *Secret, secret_key *Secret,
 ) (string, error) {
-	fmt.Println("Build.")
 	build := m.Build(logic)
-
-	fmt.Println("Package.")
 	pack := m.Package(build.Directory("/out"))
-
-	fmt.Println("Deploy.")
 	deploy := m.Deploy(pack.Directory("/out"), infra, access_key, secret_key)
 
 	return deploy.Stdout(ctx)
