@@ -21,11 +21,12 @@ jobs:
       run: curl -L https://dl.dagger.io/dagger/install.sh | sh
       working-directory: /usr/local
     - name: Run Dagger
-      run: dagger call run \
-        --logic="../../logic" \
-        --infra="../../infra" \
-        --access_key="env:AWS_ACCESS_KEY_ID" \
-        --secret_key="env:AWS_SECRET_ACCESS_KEY"
+      run: |
+        dagger call run \
+          --logic="../../logic" \
+          --infra="../../infra" \
+          --access_key="env:AWS_ACCESS_KEY_ID" \
+          --secret_key="env:AWS_SECRET_ACCESS_KEY"
       working-directory: cicd/dagger
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
