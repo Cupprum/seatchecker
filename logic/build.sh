@@ -4,9 +4,9 @@
 GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap seatchecker.go
 
 # package binary
-zip seatChecker.zip bootstrap
+zip seatchecker.zip bootstrap
 
 # cleanup binary
 rm bootstrap
 
-mv seatChecker.zip ../out/seatChecker.zip
+mv seatchecker.zip ../out/seatchecker.zip
