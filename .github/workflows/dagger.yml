@@ -24,8 +24,7 @@ jobs:
         --logic="../../logic" \
         --infra="../../infra" \
         --access_key="env:AWS_ACCESS_KEY_ID" \
-        --secret_key="env:AWS_SECRET_ACCESS_KEY" \
-        --progress="plain"
+        --secret_key="env:AWS_SECRET_ACCESS_KEY"
       working-directory: cicd/dagger
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
