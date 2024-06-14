@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -294,6 +295,8 @@ func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	log.Println("Program started.")
+
 	email := os.Getenv("SEATCHECKER_EMAIL")
 	if email == "" {
 		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_EMAIL' is not configured")
@@ -304,6 +307,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_PASSWORD' is not configured")
 		os.Exit(1)
 	}
+
+	log.Println("Configuration successful.")
 
 	catchErr := func(err error) {
 		if err != nil {
@@ -317,22 +322,33 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		fqdn:   "www.ryanair.com",
 	}
 
+	log.Printf("Start account login for user: %s.\n", email)
 	cAuth, err := client.accountLogin(email, password)
-	catchErr(err) // TODO: probably i will have to rething exceptions
+	catchErr(err) // TODO: probably i will have to rethink exceptions -> Why?
+	log.Println("Account login finished successfully.")
 
+	log.Println("Get closest Booking ID.")
 	bookingId, err := client.getBookingId(cAuth)
 	catchErr(err)
+	log.Printf("Booking ID retrieved successfully: %s.\n", bookingId)
 
+	log.Printf("Get Booking with ID: %s.\n", bookingId)
 	bAuth, err := client.getBookingById(cAuth, bookingId)
 	catchErr(err)
+	log.Printf("Booking retrieved successfully, Trip ID: %s.\n", bAuth.TripId)
 
+	log.Println("Create basket.")
 	basketId, err := client.createBasket(bAuth)
 	catchErr(err)
+	log.Printf("Basket created successfully, Basket ID: %s.\n", basketId)
 
+	log.Println("Get seats.")
 	seats, err := client.getSeatsQuery(basketId)
 	catchErr(err)
+	log.Println("Seats retrieved successfully.")
+	log.Println(seats)
 
-	fmt.Println(seats)
+	log.Println("Program finished successfully.")
 	return events.APIGatewayProxyResponse{
 		Body:       fmt.Sprintln(seats),
 		StatusCode: 200,
