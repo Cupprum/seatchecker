@@ -22,11 +22,11 @@ jobs:
       with:
         workdir: cicd/dagger
         args: >
-          run \
-          --logic="../../logic" \
-          --infra="../../infra" \
-          --access_key="env:AWS_ACCESS_KEY_ID" \
-          --secret_key="env:AWS_SECRET_ACCESS_KEY"
+          run
+            --logic="../../logic"
+            --infra="../../infra"
+            --access_key="env:AWS_ACCESS_KEY_ID"
+            --secret_key="env:AWS_SECRET_ACCESS_KEY"
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
