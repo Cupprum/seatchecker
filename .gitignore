@@ -1,3 +1,6 @@
 # Terraform
 .terraform
 .tfvars
+
+# MacOS
+.DS_Store
