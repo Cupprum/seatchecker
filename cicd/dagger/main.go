@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"time"
 )
 
 type Cicd struct{}
@@ -9,13 +11,17 @@ type Cicd struct{}
 func Logic(src *Directory) *Directory {
 	base := dag.Container().
 		From("golang:latest").
+		WithEnvVariable("CACHE", "2").
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "zip", "-y"}). // Required to package lambda.
-		WithEnvVariable("tes", "4").
 		WithDirectory("/src", src).
 		WithWorkdir("/src").
 		WithEnvVariable("GOOS", "linux").
 		WithEnvVariable("GOARCH", "arm64").
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-logic")).
+		WithEnvVariable("GOMODCACHE", "/go/pkg/mod").
+		WithMountedCache("/go/build-cache", dag.CacheVolume("go-build-logic")).
+		WithEnvVariable("GOCACHE", "/go/build-cache").
 		WithExec([]string{"go", "install"})
 
 	base.WithExec([]string{"go", "test"})
@@ -38,17 +44,25 @@ func Logic(src *Directory) *Directory {
 func Infra(out *Directory, infra *Directory,
 	ak *Secret, sk *Secret,
 ) *Container {
-	return dag.Container().
+	base := dag.Container().
 		From("hashicorp/terraform:latest").
-		WithEnvVariable("tes", "4"). // TODO: increment to force full run
+		WithEnvVariable("CACHE", "2").
 		WithDirectory("/out", out).
 		WithDirectory("/infra", infra).
 		WithWorkdir("/infra").
 		WithSecretVariable("AWS_ACCESS_KEY_ID", ak).
 		WithSecretVariable("AWS_SECRET_ACCESS_KEY", sk).
-		WithEnvVariable("AWS_REGION", "eu-central-1").
-		WithExec([]string{"init"}).
-		WithExec([]string{"apply", "-auto-approve"})
+		WithEnvVariable("AWS_REGION", "eu-central-1")
+
+	tf := base.WithExec([]string{"init"})
+
+	// Ensure terraform operation is never cached.
+	epoch := fmt.Sprintf("%d", time.Now().Unix())
+	tf = tf.WithEnvVariable("CACHEBUSTER", epoch)
+
+	tf = tf.WithExec([]string{"apply", "-auto-approve"})
+
+	return tf
 }
 
 func (m *Cicd) Run(ctx context.Context,
