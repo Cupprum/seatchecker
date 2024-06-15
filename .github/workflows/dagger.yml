@@ -21,7 +21,8 @@ jobs:
       uses: dagger/dagger-for-github@v5
       with:
         workdir: cicd/dagger
-        args: run \
+        args: |
+          run \
           --logic="../../logic" \
           --infra="../../infra" \
           --access_key="env:AWS_ACCESS_KEY_ID" \
