@@ -63,7 +63,7 @@ func Infra(out *Directory, infra *Directory,
 		WithEnvVariable("AWS_REGION", "eu-central-1")
 	// Configure cache for Terraform plugins.
 	base = base.
-		WithMountedCache("/infra/terraform.d/plugins", dag.CacheVolume("terraform"))
+		WithMountedCache("/infra/terraform.d/plugins", dag.CacheVolume("terraform-plugins"))
 
 	tf := base.WithExec([]string{"init"})
 
