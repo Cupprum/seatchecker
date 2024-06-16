@@ -9,4 +9,4 @@ zip seatchecker.zip bootstrap
 # cleanup binary
 rm bootstrap
 
-mv seatchecker.zip ../out/seatchecker.zip
+mv seatchecker.zip ../../out/seatchecker.zip
