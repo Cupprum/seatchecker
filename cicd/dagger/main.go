@@ -45,7 +45,8 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 		WithExec([]string{"mkdir", "/out"}).
 		WithExec([]string{"mv", module, "/out/bootstrap"}). // Lambda requires it to be called bootstrap.
 		WithWorkdir("/out").
-		WithExec([]string{"zip", fmt.Sprintf("%s.zip", module), "bootstrap"})
+		WithExec([]string{"zip", fmt.Sprintf("%s.zip", module), "bootstrap"}).
+		WithExec([]string{"rm", "bootstrap"})
 
 	return out.Directory("/out")
 }
@@ -58,8 +59,8 @@ func Logic(seatchecker *Directory, notifier *Directory) *Directory {
 		WithDirectory("/in/seatchecker", sc).
 		WithDirectory("/in/notifier", nt).
 		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"cp", "-R", "/in/seatchecker/*", "/out"}).
-		WithExec([]string{"cp", "-R", "/in/notifier/*", "/out"}).
+		WithExec([]string{"cp", "-r", "/in/seatchecker/.", "/out"}).
+		WithExec([]string{"cp", "-r", "/in/notifier/.", "/out"}).
 		Directory("/out")
 
 	return combined
