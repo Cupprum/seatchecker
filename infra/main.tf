@@ -56,3 +56,16 @@ resource "aws_lambda_function" "test_lambda" {
     }
   }
 }
+
+
+resource "aws_lambda_function" "test_lambda" {
+  # If the file is not in the current working directory you will need to include a
+  # path.module in the filename.
+  filename      = "/out/notifier.zip"
+  function_name = "notifier"
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = "bootstrap"
+  architectures = [ "arm64" ]
+
+  runtime = "provided.al2023"
+}

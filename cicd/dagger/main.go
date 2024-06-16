@@ -8,7 +8,7 @@ import (
 
 type Cicd struct{}
 
-func Logic(src *Directory) *Directory {
+func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 	base := dag.Container().From("golang:latest")
 	// Install packages required to package Lambda.
 	base = base.
@@ -24,27 +24,45 @@ func Logic(src *Directory) *Directory {
 		WithEnvVariable("GOARCH", "arm64")
 	// Add cache for Go.
 	base = base.
-		WithMountedCache("/go/pkg/mod", dag.CacheVolume("go-mod-logic")).
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume(fmt.Sprintf("go-mod-%s", module))).
 		WithEnvVariable("GOMODCACHE", "/go/pkg/mod").
-		WithMountedCache("/go/build-cache", dag.CacheVolume("go-build-logic")).
+		WithMountedCache("/go/build-cache", dag.CacheVolume(fmt.Sprintf("go-build-%s", module))).
 		WithEnvVariable("GOCACHE", "/go/build-cache")
 	base = base.WithExec([]string{"go", "install"})
 
-	base.WithExec([]string{"go", "test"})
+	// TODO: do i need a feature flag here?
+	if test {
+		base.WithExec([]string{"go", "test"})
+	}
 
 	build := base.WithExec([]string{"go", "build",
 		"-tags", "lambda.norpc", // Do not include RPC part of library.
-		"-o", "seatchecker",
+		"-o", module,
 		"-ldflags", "-w", // Reduce size of output binary.
-		"seatchecker.go"})
+		fmt.Sprintf("%s.go", module)})
 
 	out := build.
 		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"mv", "seatchecker", "/out/bootstrap"}). // Lambda requires it to be called bootstrap.
+		WithExec([]string{"mv", module, "/out/bootstrap"}). // Lambda requires it to be called bootstrap.
 		WithWorkdir("/out").
-		WithExec([]string{"zip", "seatchecker.zip", "bootstrap"})
+		WithExec([]string{"zip", fmt.Sprintf("%s.zip", module), "bootstrap"})
 
 	return out.Directory("/out")
+}
+
+func Logic(seatchecker *Directory, notifier *Directory) *Directory {
+	sc := PackageGoLambda(seatchecker, "seatchecker", true)
+	nt := PackageGoLambda(notifier, "notifier", false)
+
+	combined := dag.Container().From("golang:latest").
+		WithDirectory("/in/seatchecker", sc).
+		WithDirectory("/in/notifier", nt).
+		WithExec([]string{"mkdir", "/out"}).
+		WithExec([]string{"cp", "-R", "/in/seatchecker/*", "/out"}).
+		WithExec([]string{"cp", "-R", "/in/notifier/*", "/out"}).
+		Directory("/out")
+
+	return combined
 }
 
 func Infra(out *Directory, infra *Directory,
@@ -77,10 +95,10 @@ func Infra(out *Directory, infra *Directory,
 }
 
 func (m *Cicd) Run(ctx context.Context,
-	logic *Directory, infra *Directory,
+	seatchecker *Directory, notifier *Directory, infra *Directory,
 	access_key *Secret, secret_key *Secret,
 ) (string, error) {
-	out := Logic(logic)
+	out := Logic(seatchecker, notifier)
 	i := Infra(out, infra, access_key, secret_key)
 
 	return i.Stdout(ctx)
