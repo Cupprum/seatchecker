@@ -51,21 +51,6 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 	return out.Directory("/out")
 }
 
-func Logic(seatchecker *Directory, notifier *Directory) *Directory {
-	sc := PackageGoLambda(seatchecker, "seatchecker", true)
-	nt := PackageGoLambda(notifier, "notifier", false)
-
-	combined := dag.Container().From("golang:latest").
-		WithDirectory("/in/seatchecker", sc).
-		WithDirectory("/in/notifier", nt).
-		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"cp", "-r", "/in/seatchecker/.", "/out"}).
-		WithExec([]string{"cp", "-r", "/in/notifier/.", "/out"}).
-		Directory("/out")
-
-	return combined
-}
-
 func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
 	base := dag.Container().From("hashicorp/terraform:latest")
 	// Configure source directories.
@@ -87,18 +72,6 @@ func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
 	return base
 }
 
-func Infra(out *Directory, infra *Directory, ak *Secret, sk *Secret) *Container {
-	tf := TerraformContainer(infra, ak, sk).WithDirectory("/out", out)
-
-	// Ensure that Terraform apply operation is never cached.
-	epoch := fmt.Sprintf("%d", time.Now().Unix())
-	tf = tf.
-		WithEnvVariable("CACHEBUSTER", epoch).
-		WithExec([]string{"apply", "-auto-approve"})
-
-	return tf
-}
-
 func (m *Cicd) Apply(
 	ctx context.Context,
 	seatchecker *Directory,
@@ -107,10 +80,29 @@ func (m *Cicd) Apply(
 	access_key *Secret,
 	secret_key *Secret,
 ) (string, error) {
-	out := Logic(seatchecker, notifier)
-	i := Infra(out, infra, access_key, secret_key)
+	// Logic.
+	sc := PackageGoLambda(seatchecker, "seatchecker", true)
+	nt := PackageGoLambda(notifier, "notifier", false)
 
-	return i.Stdout(ctx)
+	// Combine outputs.
+	out := dag.Container().From("golang:latest").
+		WithDirectory("/in/seatchecker", sc).
+		WithDirectory("/in/notifier", nt).
+		WithExec([]string{"mkdir", "/out"}).
+		WithExec([]string{"cp", "-r", "/in/seatchecker/.", "/out"}).
+		WithExec([]string{"cp", "-r", "/in/notifier/.", "/out"}).
+		Directory("/out")
+
+	// Infra.
+	tf := TerraformContainer(infra, access_key, secret_key).
+		WithDirectory("/out", out)
+
+	// Ensure that Terraform apply operation is never cached.
+	epoch := fmt.Sprintf("%d", time.Now().Unix())
+	tf = tf.WithEnvVariable("CACHEBUSTER", epoch)
+	tf = tf.WithExec([]string{"apply", "-auto-approve"})
+
+	return tf.Stdout(ctx)
 }
 
 func (m *Cicd) Destroy(
