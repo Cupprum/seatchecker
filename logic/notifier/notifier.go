@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -9,8 +13,9 @@ import (
 // Event defines your lambda input and output data structure,
 // and of course you can have different input and output data structure
 type InEvent struct {
-	Sk string `json:"sampleKey1"`
-	K  string `json:"key3"`
+	Window int `json:"window"`
+	Middle int `json:"middle"`
+	Aisle  int `json:"aisle"`
 }
 
 type OutEvent struct {
@@ -22,25 +27,17 @@ func handler(request InEvent) (OutEvent, error) {
 
 	log.Println(request)
 
-	// email := os.Getenv("SEATCHECKER_EMAIL")
-	// if email == "" {
-	// 	fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_EMAIL' is not configured")
-	// 	os.Exit(1)
-	// }
+	topic := os.Getenv("SEATCHECKER_NTFY_TOPIC")
+	if topic == "" {
+		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_NTFY_TOPIC' is not configured")
+		os.Exit(1)
+	}
 
-	// log.Println("Configuration successful.")
-
-	// catchErr := func(err error) {
-	// 	if err != nil {
-	// 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
-
-	// log.Printf("Start account login for user: %s.\n", email)
-	// cAuth, err := client.accountLogin(email, password)
-	// catchErr(err) // TODO: probably i will have to rethink exceptions -> Why?
-	// log.Println("Account login finished successfully.")
+	resp, err := http.Post(fmt.Sprintf("https://ntfy.sh/%v", topic), "text/plain", strings.NewReader("Test1234"))
+	if resp.Status != "200" || err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
 	log.Println("Program finished successfully.")
 	return OutEvent{Status: 200}, nil
@@ -48,6 +45,6 @@ func handler(request InEvent) (OutEvent, error) {
 
 func main() {
 	lambda.Start(handler)
-	// resp := handler(InEvent{Sk: "test1", K: "test2"})
+	// resp, _ := handler(InEvent{Window: 4, Middle: 2, Aisle: 0})
 	// log.Println(resp)
 }

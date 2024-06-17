@@ -63,6 +63,12 @@ resource "aws_lambda_function" "notifier" {
   architectures = [ "arm64" ]
 
   runtime = "provided.al2023"
+
+  environment {
+    variables = {
+      SEATCHECKER_NTFY_TOPIC    = "xxx"
+    }
+  }
 }
 
 module "step-functions" {
