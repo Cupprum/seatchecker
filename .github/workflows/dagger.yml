@@ -22,7 +22,7 @@ jobs:
       with:
         workdir: cicd/dagger
         args: >-
-          run
+          apply
           --seatchecker="../../logic/seatchecker"
           --notifier="../../logic/notifier"
           --infra="../../infra"

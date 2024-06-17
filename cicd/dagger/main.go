@@ -66,13 +66,10 @@ func Logic(seatchecker *Directory, notifier *Directory) *Directory {
 	return combined
 }
 
-func Infra(out *Directory, infra *Directory,
-	ak *Secret, sk *Secret,
-) *Container {
+func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
 	base := dag.Container().From("hashicorp/terraform:latest")
 	// Configure source directories.
 	base = base.
-		WithDirectory("/out", out).
 		WithDirectory("/infra", infra).
 		WithWorkdir("/infra")
 	// Configure AWS credentials.
@@ -82,9 +79,16 @@ func Infra(out *Directory, infra *Directory,
 		WithEnvVariable("AWS_REGION", "eu-central-1")
 	// Configure cache for Terraform plugins.
 	base = base.
+		WithEnvVariable("TF_PLUGIN_CACHE_DIR", "/infra/terraform.d/plugins").
 		WithMountedCache("/infra/terraform.d/plugins", dag.CacheVolume("terraform-plugins"))
+	base = base.
+		WithExec([]string{"init"})
 
-	tf := base.WithExec([]string{"init"})
+	return base
+}
+
+func Infra(out *Directory, infra *Directory, ak *Secret, sk *Secret) *Container {
+	tf := TerraformContainer(infra, ak, sk).WithDirectory("/out", out)
 
 	// Ensure that Terraform apply operation is never cached.
 	epoch := fmt.Sprintf("%d", time.Now().Unix())
@@ -95,12 +99,28 @@ func Infra(out *Directory, infra *Directory,
 	return tf
 }
 
-func (m *Cicd) Run(ctx context.Context,
-	seatchecker *Directory, notifier *Directory, infra *Directory,
-	access_key *Secret, secret_key *Secret,
+func (m *Cicd) Apply(
+	ctx context.Context,
+	seatchecker *Directory,
+	notifier *Directory,
+	infra *Directory,
+	access_key *Secret,
+	secret_key *Secret,
 ) (string, error) {
 	out := Logic(seatchecker, notifier)
 	i := Infra(out, infra, access_key, secret_key)
 
 	return i.Stdout(ctx)
+}
+
+func (m *Cicd) Destroy(
+	ctx context.Context,
+	infra *Directory,
+	access_key *Secret,
+	secret_key *Secret,
+) (string, error) {
+	tf := TerraformContainer(infra, access_key, secret_key)
+	tf = tf.WithExec([]string{"destroy", "-auto-approve"})
+
+	return tf.Stdout(ctx)
 }
