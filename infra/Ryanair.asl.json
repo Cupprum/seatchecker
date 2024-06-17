@@ -1,5 +1,5 @@
 {
-  "Comment": "A Hello World example demonstrating various state types of the Amazon States Language. It is composed of flow control states only, so it does not need resources to run.",
+  "Comment": "Monitoring the state of seats on next flight and informing user.",
   "StartAt": "Lambda Invoke",
   "States": {
     "Lambda Invoke": {
@@ -8,8 +8,9 @@
       "OutputPath": "$.Payload",
       "Parameters": {
         "Payload": {
-          "sampleKey1": "sampleValue1",
-          "key3": "100"
+          "window": 4,
+          "middle": 2,
+          "aisle": 0
         },
         "FunctionName": "arn:aws:lambda:eu-central-1:666914038100:function:notifier:$LATEST"
       },

@@ -38,6 +38,8 @@ func handler(request InEvent) (OutEvent, error) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+	log.Println(resp.Body)
+	log.Println(resp.Status)
 
 	log.Println("Program finished successfully.")
 	return OutEvent{Status: 200}, nil

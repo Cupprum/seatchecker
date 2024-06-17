@@ -1,4 +1,4 @@
-module dagger/cicd
+module dagger/dagger
 
 go 1.22.3
 

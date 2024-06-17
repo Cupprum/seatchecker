@@ -29,6 +29,9 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 		WithMountedCache("/go/build-cache", dag.CacheVolume(fmt.Sprintf("go-build-%s", module))).
 		WithEnvVariable("GOCACHE", "/go/build-cache")
 	base = base.WithExec([]string{"go", "install"})
+	// Ensure that build operation is never cached.
+	epoch := fmt.Sprintf("%d", time.Now().Unix())
+	base = base.WithEnvVariable("CACHEBUSTER", epoch)
 
 	// TODO: do i need a feature flag here?
 	if test {
@@ -64,21 +67,29 @@ func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
 		WithEnvVariable("AWS_REGION", "eu-central-1")
 	// Configure cache for Terraform plugins.
 	base = base.
-		WithEnvVariable("TF_PLUGIN_CACHE_DIR", "/infra/terraform.d/plugins").
-		WithMountedCache("/infra/terraform.d/plugins", dag.CacheVolume("terraform-plugins"))
+		WithEnvVariable("TF_PLUGIN_CACHE_DIR", "/infra/.terraform.d/plugins").
+		WithMountedCache("/infra/.terraform.d/plugins", dag.CacheVolume("tf-plugin-cache"))
 	base = base.
 		WithExec([]string{"init"})
 
 	return base
 }
 
+// Apply infrastructure changes.
 func (m *Cicd) Apply(
 	ctx context.Context,
+	// Directory containing the seatchecker lambda source code.
 	seatchecker *Directory,
+	// Directory containing the notifier lambda source code.
 	notifier *Directory,
+	// Directory containing the infrastructure.
 	infra *Directory,
+	// AWS Access Key ID.
 	access_key *Secret,
+	// AWS Secret Access Key.
 	secret_key *Secret,
+	// Name of the ntfy.sh topic.
+	ntfy_topic *Secret,
 ) (string, error) {
 	// Logic.
 	sc := PackageGoLambda(seatchecker, "seatchecker", true)
@@ -93,9 +104,10 @@ func (m *Cicd) Apply(
 		WithExec([]string{"cp", "-r", "/in/notifier/.", "/out"}).
 		Directory("/out")
 
-	// Infra.
+	// Infra with basic configuration.
 	tf := TerraformContainer(infra, access_key, secret_key).
-		WithDirectory("/out", out)
+		WithDirectory("/out", out).
+		WithSecretVariable("TF_VAR_seatchecker_ntfy_topic", ntfy_topic)
 
 	// Ensure that Terraform apply operation is never cached.
 	epoch := fmt.Sprintf("%d", time.Now().Unix())
@@ -105,10 +117,14 @@ func (m *Cicd) Apply(
 	return tf.Stdout(ctx)
 }
 
+// Destroy the infrastructure.
 func (m *Cicd) Destroy(
 	ctx context.Context,
+	// Directory containing the infrastructure.
 	infra *Directory,
+	// AWS Access Key ID.
 	access_key *Secret,
+	// AWS Secret Access Key.
 	secret_key *Secret,
 ) (string, error) {
 	tf := TerraformContainer(infra, access_key, secret_key)

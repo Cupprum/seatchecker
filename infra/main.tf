@@ -66,7 +66,7 @@ resource "aws_lambda_function" "notifier" {
 
   environment {
     variables = {
-      SEATCHECKER_NTFY_TOPIC    = "xxx"
+      SEATCHECKER_NTFY_TOPIC    = var.seatchecker_ntfy_topic
     }
   }
 }
@@ -74,7 +74,7 @@ resource "aws_lambda_function" "notifier" {
 module "step-functions" {
   source  = "terraform-aws-modules/step-functions/aws"
   version = "4.2.0"
-  definition = templatefile("./stepfunction.json", {})
+  definition = templatefile("./Ryanair.asl.json", {})
   name = "Ryanair"
   create_role = true
   service_integrations = { # will automatically create policies to attach to the role 
