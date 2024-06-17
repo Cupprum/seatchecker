@@ -17,7 +17,7 @@ data "aws_iam_policy_document" "assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = ["lambda.amazonaws.com", "states.amazonaws.com"]
+      identifiers = ["lambda.amazonaws.com"]
     }
 
     actions = ["sts:AssumeRole"]
@@ -39,8 +39,6 @@ resource "aws_iam_role_policy_attachment" "lambda_flow_log_cloudwatch" {
 }
 
 resource "aws_lambda_function" "seatchecker" {
-  # If the file is not in the current working directory you will need to include a
-  # path.module in the filename.
   filename      = "/out/seatchecker.zip"
   function_name = "seatchecker"
   role          = aws_iam_role.iam_for_lambda.arn
@@ -57,10 +55,7 @@ resource "aws_lambda_function" "seatchecker" {
   }
 }
 
-
 resource "aws_lambda_function" "notifier" {
-  # If the file is not in the current working directory you will need to include a
-  # path.module in the filename.
   filename      = "/out/notifier.zip"
   function_name = "notifier"
   role          = aws_iam_role.iam_for_lambda.arn
@@ -68,4 +63,22 @@ resource "aws_lambda_function" "notifier" {
   architectures = [ "arm64" ]
 
   runtime = "provided.al2023"
+}
+
+module "step-functions" {
+  source  = "terraform-aws-modules/step-functions/aws"
+  version = "4.2.0"
+  definition = templatefile("./stepfunction.json", {})
+  name = "Ryanair"
+  create_role = true
+  service_integrations = { # will automatically create policies to attach to the role 
+    lambda = {
+      lambda = [
+        aws_lambda_function.seatchecker.arn,
+        aws_lambda_function.notifier.arn,
+        "${aws_lambda_function.seatchecker.arn}:*",
+        "${aws_lambda_function.notifier.arn}:*"
+      ]
+    }
+  }
 }
