@@ -10,10 +10,6 @@ type Cicd struct{}
 
 func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 	base := dag.Container().From("golang:latest")
-	// Install packages required to package Lambda.
-	base = base.
-		WithExec([]string{"apt", "update"}).
-		WithExec([]string{"apt", "install", "zip", "-y"})
 	// Configure source directory.
 	base = base.
 		WithDirectory("/src", src).
@@ -46,10 +42,8 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 
 	out := build.
 		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"mv", module, "/out/bootstrap"}). // Lambda requires it to be called bootstrap.
-		WithWorkdir("/out").
-		WithExec([]string{"zip", fmt.Sprintf("%s.zip", module), "bootstrap"}).
-		WithExec([]string{"rm", "bootstrap"})
+		WithExec([]string{"mv", module, "/out"}).
+		WithWorkdir("/out")
 
 	return out.Directory("/out")
 }
