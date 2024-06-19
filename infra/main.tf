@@ -38,14 +38,21 @@ resource "aws_iam_role_policy_attachment" "lambda_flow_log_cloudwatch" {
   policy_arn = data.aws_iam_policy.lambda_basic_execution_policy.arn
 }
 
+data "archive_file" "lambda_seatchecker_zip" {
+  type        = "zip"
+  source_dir = "/out/seatchecker"
+  output_path = "/out/seatchecker.zip"
+}
+
 resource "aws_lambda_function" "seatchecker" {
-  filename      = "/out/seatchecker.zip"
   function_name = "seatchecker"
   role          = aws_iam_role.iam_for_lambda.arn
-  handler       = "bootstrap"
+  filename      = data.archive_file.lambda_seatchecker_zip.output_path
+  source_code_hash = data.archive_file.lambda_seatchecker_zip.output_base64sha256
   architectures = [ "arm64" ]
-
   runtime = "provided.al2023"
+  handler       = "bootstrap"
+
 
   environment {
     variables = {
@@ -55,14 +62,20 @@ resource "aws_lambda_function" "seatchecker" {
   }
 }
 
+data "archive_file" "lambda_notifier_zip" {
+  type        = "zip"
+  source_dir = "/out/notifier"
+  output_path = "/out/notifier.zip"
+}
+
 resource "aws_lambda_function" "notifier" {
-  filename      = "/out/notifier.zip"
   function_name = "notifier"
   role          = aws_iam_role.iam_for_lambda.arn
-  handler       = "bootstrap"
+  filename      = data.archive_file.lambda_notifier_zip.output_path
+  source_code_hash = data.archive_file.lambda_notifier_zip.output_base64sha256
   architectures = [ "arm64" ]
-
   runtime = "provided.al2023"
+  handler       = "bootstrap"
 
   environment {
     variables = {

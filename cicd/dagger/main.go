@@ -42,10 +42,10 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 
 	out := build.
 		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"mv", module, "/out"}).
-		WithWorkdir("/out")
+		WithExec([]string{"mv", module, "/out/bootstrap"}).
+		Directory("/out")
 
-	return out.Directory("/out")
+	return out
 }
 
 func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
@@ -89,18 +89,10 @@ func (m *Cicd) Apply(
 	sc := PackageGoLambda(seatchecker, "seatchecker", true)
 	nt := PackageGoLambda(notifier, "notifier", false)
 
-	// Combine outputs.
-	out := dag.Container().From("golang:latest").
-		WithDirectory("/in/seatchecker", sc).
-		WithDirectory("/in/notifier", nt).
-		WithExec([]string{"mkdir", "/out"}).
-		WithExec([]string{"cp", "-r", "/in/seatchecker/.", "/out"}).
-		WithExec([]string{"cp", "-r", "/in/notifier/.", "/out"}).
-		Directory("/out")
-
 	// Infra with basic configuration.
 	tf := TerraformContainer(infra, access_key, secret_key).
-		WithDirectory("/out", out).
+		WithDirectory("/out/seatchecker", sc).
+		WithDirectory("/out/notifier", nt).
 		WithSecretVariable("TF_VAR_seatchecker_ntfy_topic", ntfy_topic)
 
 	// Ensure that Terraform apply operation is never cached.
