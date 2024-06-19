@@ -33,13 +33,16 @@ func handler(request InEvent) (OutEvent, error) {
 		os.Exit(1)
 	}
 
+	log.Println("Send notification.")
 	resp, err := http.Post(fmt.Sprintf("https://ntfy.sh/%v", topic), "text/plain", strings.NewReader("Test1234"))
-	if resp.Status != "200" || err != nil {
+	if resp.StatusCode != 200 {
+		fmt.Fprintf(os.Stderr, "invalid status code, expected: 200, received: %v\n", resp.StatusCode)
+		os.Exit(1)
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	log.Println(resp.Body)
-	log.Println(resp.Status)
 
 	log.Println("Program finished successfully.")
 	return OutEvent{Status: 200}, nil
