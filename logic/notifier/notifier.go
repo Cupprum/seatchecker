@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -22,6 +23,33 @@ type OutEvent struct {
 	Status int `json:"status"`
 }
 
+func sendNotification(topic string, text string) error {
+	m := "POST"
+	// TODO: redo configuration of url while implementing testing. Where should i source config from?
+	u, _ := url.Parse("https://ntfy.sh") // Errorhandling not required, not a variable.
+	u = u.JoinPath(topic)
+
+	b := strings.NewReader(text)
+	req, _ := http.NewRequest(m, u.String(), b)
+	req.Header.Set("Title", "Seatchecker")
+	req.Header.Set("Tags", "airplane")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+		// TODO: implement exception handling
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		fmt.Fprintf(os.Stderr, "invalid status code, expected: 200, received: %v\n", res.StatusCode)
+		os.Exit(1)
+		// TODO: implement exception handling
+	}
+
+	return nil
+}
+
 func handler(request InEvent) (OutEvent, error) {
 	log.Println("Program started.")
 
@@ -34,11 +62,7 @@ func handler(request InEvent) (OutEvent, error) {
 	}
 
 	log.Println("Send notification.")
-	resp, err := http.Post(fmt.Sprintf("https://ntfy.sh/%v", topic), "text/plain", strings.NewReader("Test1234"))
-	if resp.StatusCode != 200 {
-		fmt.Fprintf(os.Stderr, "invalid status code, expected: 200, received: %v\n", resp.StatusCode)
-		os.Exit(1)
-	}
+	err := sendNotification(topic, "Window: 4, Middle: 2, Aisle: 0")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
