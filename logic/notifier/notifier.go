@@ -1,18 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// Event defines your lambda input and output data structure,
-// and of course you can have different input and output data structure
 type InEvent struct {
 	Window int `json:"window"`
 	Middle int `json:"middle"`
@@ -23,57 +20,65 @@ type OutEvent struct {
 	Status int `json:"status"`
 }
 
-func sendNotification(topic string, text string) error {
+func generateText(e InEvent) string {
+	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", e.Window, e.Middle, e.Aisle)
+}
+
+func sendNotification(server string, topic string, text string) error {
 	m := "POST"
-	// TODO: redo configuration of url while implementing testing. Where should i source config from?
-	u, _ := url.Parse("https://ntfy.sh") // Errorhandling not required, not a variable.
+	u, err := url.Parse(server)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL: %v", err)
+	}
 	u = u.JoinPath(topic)
 
 	b := strings.NewReader(text)
-	req, _ := http.NewRequest(m, u.String(), b)
+	req, err := http.NewRequest(m, u.String(), b)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
 	req.Header.Set("Title", "Seatchecker")
 	req.Header.Set("Tags", "airplane")
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-		// TODO: implement exception handling
+		return fmt.Errorf("failed to execute request: %v", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		fmt.Fprintf(os.Stderr, "invalid status code, expected: 200, received: %v\n", res.StatusCode)
-		os.Exit(1)
-		// TODO: implement exception handling
+		return fmt.Errorf("invalid status code, expected: 200, received: %v", res.StatusCode)
 	}
 
 	return nil
 }
 
-func handler(request InEvent) (OutEvent, error) {
-	log.Println("Program started.")
-
-	log.Println(request)
+func handler(e InEvent) (OutEvent, error) {
+	log.Printf("Received Event: %v\n", e)
 
 	topic := os.Getenv("SEATCHECKER_NTFY_TOPIC")
 	if topic == "" {
-		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_NTFY_TOPIC' is not configured")
-		os.Exit(1)
+		msg := "env var 'SEATCHECKER_NTFY_TOPIC' is not configured"
+		fmt.Fprintln(os.Stderr, msg)
+		return OutEvent{Status: 500}, errors.New(msg)
 	}
 
 	log.Println("Send notification.")
-	err := sendNotification(topic, "Window: 4, Middle: 2, Aisle: 0")
+	server := "https://ntfy.sh"
+	text := generateText(e)
+	err := sendNotification(server, topic, text)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		msg := fmt.Sprintf("error: %v", err)
+		fmt.Fprintln(os.Stderr, msg)
+		return OutEvent{Status: 500}, errors.New(msg)
 	}
+	log.Println("Notification sent successfully.")
 
-	log.Println("Program finished successfully.")
 	return OutEvent{Status: 200}, nil
 }
 
 func main() {
-	lambda.Start(handler)
-	// resp, _ := handler(InEvent{Window: 4, Middle: 2, Aisle: 0})
-	// log.Println(resp)
+	// lambda.Start(handler)
+	resp, _ := handler(InEvent{Window: 4, Middle: 2, Aisle: 1})
+	log.Println(resp)
 }
