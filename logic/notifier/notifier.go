@@ -24,13 +24,12 @@ func generateText(e InEvent) string {
 	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", e.Window, e.Middle, e.Aisle)
 }
 
-func sendNotification(server string, topic string, text string) error {
+func sendNotification(endpoint string, text string) error {
 	m := "POST"
-	u, err := url.Parse(server)
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return fmt.Errorf("failed to parse URL: %v", err)
 	}
-	u = u.JoinPath(topic)
 
 	b := strings.NewReader(text)
 	req, err := http.NewRequest(m, u.String(), b)
@@ -56,17 +55,16 @@ func sendNotification(server string, topic string, text string) error {
 func handler(e InEvent) (OutEvent, error) {
 	log.Printf("Received Event: %v\n", e)
 
-	topic := os.Getenv("SEATCHECKER_NTFY_TOPIC")
-	if topic == "" {
-		msg := "env var 'SEATCHECKER_NTFY_TOPIC' is not configured"
+	ep := os.Getenv("SEATCHECKER_NTFY_ENDPOINT")
+	if ep == "" {
+		msg := "env var 'SEATCHECKER_NTFY_ENDPOINT' is not configured"
 		fmt.Fprintln(os.Stderr, msg)
 		return OutEvent{Status: 500}, errors.New(msg)
 	}
 
 	log.Println("Send notification.")
-	server := "https://ntfy.sh"
 	text := generateText(e)
-	err := sendNotification(server, topic, text)
+	err := sendNotification(ep, text)
 	if err != nil {
 		msg := fmt.Sprintf("error: %v", err)
 		fmt.Fprintln(os.Stderr, msg)
