@@ -1,6 +1,9 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -12,11 +15,39 @@ func TestGenerateText(t *testing.T) {
 	}
 }
 
-// func TestSendNotification(t *testing.T) {
-// 	// TODO: implement custom http mock server, i think it should generate url
-// 	err := sendNotification("https://www.examplelll.com", "test-topic", "test-text")
+func TestSendNotification(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Fatalf("wrong http method, expected: POST, received: %v", r.Method)
+		}
+		if r.Header["Title"][0] != "Seatchecker" {
+			t.Fatalf("wrong title, expected: Seatchecker, received: %v", r.Header["Title"][0])
+		}
+		if r.Header["Tags"][0] != "airplane" {
+			t.Fatalf("wrong tags, expected: airplane, received: %v", r.Header["Tags"][0])
+		}
+	}))
+	defer ts.Close()
 
-// 	if err != nil {
-// 		t.Fatalf("error: %v", err)
-// 	}
-// }
+	err := sendNotification(ts.URL, "test-text")
+
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+}
+
+func TestHandler(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer ts.Close()
+
+	os.Setenv("SEATCHECKER_NTFY_ENDPOINT", ts.URL)
+
+	i := InEvent{Window: 4, Middle: 0, Aisle: 2}
+	o, err := handler(i)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if o.Status != 200 {
+		t.Fatalf("invalid response code, expected: 200, received: %v", o.Status)
+	}
+}
