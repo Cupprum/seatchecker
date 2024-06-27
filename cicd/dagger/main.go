@@ -8,7 +8,7 @@ import (
 
 type Cicd struct{}
 
-func PackageGoLambda(src *Directory, module string, test bool) *Directory {
+func PackageGoLambda(src *Directory, module string) *Directory {
 	base := dag.Container().From("golang:latest")
 	// Configure source directory.
 	base = base.
@@ -29,10 +29,7 @@ func PackageGoLambda(src *Directory, module string, test bool) *Directory {
 	epoch := fmt.Sprintf("%d", time.Now().Unix())
 	base = base.WithEnvVariable("CACHEBUSTER", epoch)
 
-	// TODO: do i need a feature flag here?
-	if test {
-		base.WithExec([]string{"go", "test"})
-	}
+	base.WithExec([]string{"go", "test"})
 
 	build := base.WithExec([]string{"go", "build",
 		"-tags", "lambda.norpc", // Do not include RPC part of library.
@@ -86,8 +83,8 @@ func (m *Cicd) Apply(
 	ntfy_topic *Secret,
 ) (string, error) {
 	// Logic.
-	sc := PackageGoLambda(seatchecker, "seatchecker", true)
-	nt := PackageGoLambda(notifier, "notifier", false)
+	sc := PackageGoLambda(seatchecker, "seatchecker")
+	nt := PackageGoLambda(notifier, "notifier")
 
 	// Infra with basic configuration.
 	tf := TerraformContainer(infra, access_key, secret_key).
