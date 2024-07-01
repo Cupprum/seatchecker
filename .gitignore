@@ -4,4 +4,4 @@
 
 # MacOS
 .DS_Store
-logic/notifier/.env
+.env
