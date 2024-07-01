@@ -81,6 +81,8 @@ func (m *Cicd) Apply(
 	secret_key *Secret,
 	// Name of the ntfy.sh topic.
 	ntfy_topic *Secret,
+	// Honeycomb.io api key representing the team.
+	honeycomb_api_key *Secret,
 ) (string, error) {
 	// Logic.
 	sc := PackageGoLambda(seatchecker, "seatchecker")
@@ -90,7 +92,8 @@ func (m *Cicd) Apply(
 	tf := TerraformContainer(infra, access_key, secret_key).
 		WithDirectory("/out/seatchecker", sc).
 		WithDirectory("/out/notifier", nt).
-		WithSecretVariable("TF_VAR_seatchecker_ntfy_topic", ntfy_topic)
+		WithSecretVariable("TF_VAR_seatchecker_ntfy_topic", ntfy_topic).
+		WithSecretVariable("TF_VAR_honeycomb_api_key", honeycomb_api_key)
 
 	// Ensure that Terraform apply operation is never cached.
 	epoch := fmt.Sprintf("%d", time.Now().Unix())

@@ -80,6 +80,10 @@ resource "aws_lambda_function" "notifier" {
   environment {
     variables = {
       SEATCHECKER_NTFY_TOPIC    = var.seatchecker_ntfy_topic
+      OTEL_SERVICE_NAME           = "seatchecker-notifier-lambda"
+      OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT = "https://api.eu1.honeycomb.io"
+      OTEL_EXPORTER_OTLP_HEADERS  = "x-honeycomb-team=${var.honeycomb_api_key}"
     }
   }
 }
