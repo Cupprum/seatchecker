@@ -116,7 +116,7 @@ func main() {
 		),
 	)
 
-	lambda.Start(otellambda.InstrumentHandler(handler))
+	lambda.Start(otellambda.InstrumentHandler(handler, otellambda.WithTracerProvider(tp), otellambda.WithFlusher(tp)))
 	// resp, _ := handler(context.Background(), InEvent{Window: 4, Middle: 2, Aisle: 1})
 	// log.Println(resp)
 }
