@@ -40,18 +40,18 @@ resource "aws_iam_role_policy_attachment" "lambda_flow_log_cloudwatch" {
 
 data "archive_file" "lambda_seatchecker_zip" {
   type        = "zip"
-  source_dir = "/out/seatchecker"
+  source_dir  = "/out/seatchecker"
   output_path = "/out/seatchecker.zip"
 }
 
 resource "aws_lambda_function" "seatchecker" {
-  function_name = "seatchecker"
-  role          = aws_iam_role.iam_for_lambda.arn
-  filename      = data.archive_file.lambda_seatchecker_zip.output_path
+  function_name    = "seatchecker"
+  role             = aws_iam_role.iam_for_lambda.arn
+  filename         = data.archive_file.lambda_seatchecker_zip.output_path
   source_code_hash = data.archive_file.lambda_seatchecker_zip.output_base64sha256
-  architectures = [ "arm64" ]
-  runtime = "provided.al2023"
-  handler       = "bootstrap"
+  architectures    = ["arm64"]
+  runtime          = "provided.al2023"
+  handler          = "bootstrap"
 
 
   environment {
@@ -64,22 +64,22 @@ resource "aws_lambda_function" "seatchecker" {
 
 data "archive_file" "lambda_notifier_zip" {
   type        = "zip"
-  source_dir = "/out/notifier"
+  source_dir  = "/out/notifier"
   output_path = "/out/notifier.zip"
 }
 
 resource "aws_lambda_function" "notifier" {
-  function_name = "notifier"
-  role          = aws_iam_role.iam_for_lambda.arn
-  filename      = data.archive_file.lambda_notifier_zip.output_path
+  function_name    = "notifier"
+  role             = aws_iam_role.iam_for_lambda.arn
+  filename         = data.archive_file.lambda_notifier_zip.output_path
   source_code_hash = data.archive_file.lambda_notifier_zip.output_base64sha256
-  architectures = [ "arm64" ]
-  runtime = "provided.al2023"
-  handler       = "bootstrap"
+  architectures    = ["arm64"]
+  runtime          = "provided.al2023"
+  handler          = "bootstrap"
 
   environment {
     variables = {
-      SEATCHECKER_NTFY_TOPIC    = var.seatchecker_ntfy_topic
+      SEATCHECKER_NTFY_TOPIC      = var.seatchecker_ntfy_topic
       OTEL_SERVICE_NAME           = "seatchecker-notifier-lambda"
       OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
       OTEL_EXPORTER_OTLP_ENDPOINT = "https://api.eu1.honeycomb.io"
@@ -89,10 +89,10 @@ resource "aws_lambda_function" "notifier" {
 }
 
 module "step-functions" {
-  source  = "terraform-aws-modules/step-functions/aws"
-  version = "4.2.0"
-  definition = templatefile("./Ryanair.asl.json", {})
-  name = "Ryanair"
+  source      = "terraform-aws-modules/step-functions/aws"
+  version     = "4.2.0"
+  definition  = templatefile("./Ryanair.asl.json", {})
+  name        = "Ryanair"
   create_role = true
   service_integrations = { # will automatically create policies to attach to the role 
     lambda = {
