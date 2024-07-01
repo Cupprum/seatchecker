@@ -80,7 +80,7 @@ func (m *Cicd) Apply(
 	// AWS Secret Access Key.
 	secret_key *Secret,
 	// Name of the ntfy.sh topic.
-	ntfy_topic *Secret,
+	ntfy_endpoint *Secret,
 	// Honeycomb.io api key representing the team.
 	honeycomb_api_key *Secret,
 ) (string, error) {
@@ -92,7 +92,7 @@ func (m *Cicd) Apply(
 	tf := TerraformContainer(infra, access_key, secret_key).
 		WithDirectory("/out/seatchecker", sc).
 		WithDirectory("/out/notifier", nt).
-		WithSecretVariable("TF_VAR_seatchecker_ntfy_topic", ntfy_topic).
+		WithSecretVariable("TF_VAR_seatchecker_ntfy_endpoint", ntfy_endpoint).
 		WithSecretVariable("TF_VAR_honeycomb_api_key", honeycomb_api_key)
 
 	// Ensure that Terraform apply operation is never cached.
