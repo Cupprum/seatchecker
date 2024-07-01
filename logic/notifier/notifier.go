@@ -12,6 +12,11 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 type InEvent struct {
@@ -80,6 +85,37 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 }
 
 func main() {
+	ctx := context.Background()
+
+	// Configure a new OTLP exporter using environment variables for sending data to Honeycomb over gRPC
+	client := otlptracegrpc.NewClient()
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		log.Fatalf("failed to initialize exporter: %e", err)
+	}
+
+	// Create a new tracer provider with a batch span processor and the otlp exporter
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exp),
+	)
+
+	// Handle shutdown to ensure all sub processes are closed correctly and telemetry is exported
+	defer func() {
+		_ = exp.Shutdown(ctx)
+		_ = tp.Shutdown(ctx)
+	}()
+
+	// Register the global Tracer provider
+	otel.SetTracerProvider(tp)
+
+	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		),
+	)
+
 	lambda.Start(otellambda.InstrumentHandler(handler))
 	// resp, _ := handler(context.Background(), InEvent{Window: 4, Middle: 2, Aisle: 1})
 	// log.Println(resp)
