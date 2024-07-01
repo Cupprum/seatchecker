@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,7 +44,7 @@ func TestHandler(t *testing.T) {
 	os.Setenv("SEATCHECKER_NTFY_ENDPOINT", ts.URL)
 
 	i := InEvent{Window: 4, Middle: 0, Aisle: 2}
-	o, err := handler(i)
+	o, err := handler(context.Background(), i)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}

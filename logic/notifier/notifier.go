@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -8,6 +9,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/aws/aws-lambda-go/lambda"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 )
 
 type InEvent struct {
@@ -52,7 +56,7 @@ func sendNotification(endpoint string, text string) error {
 	return nil
 }
 
-func handler(e InEvent) (OutEvent, error) {
+func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	log.Printf("Received Event: %v\n", e)
 
 	ep := os.Getenv("SEATCHECKER_NTFY_ENDPOINT")
@@ -76,7 +80,7 @@ func handler(e InEvent) (OutEvent, error) {
 }
 
 func main() {
-	// lambda.Start(handler)
-	resp, _ := handler(InEvent{Window: 4, Middle: 2, Aisle: 1})
-	log.Println(resp)
+	lambda.Start(otellambda.InstrumentHandler(handler))
+	// resp, _ := handler(context.Background(), InEvent{Window: 4, Middle: 2, Aisle: 1})
+	// log.Println(resp)
 }
