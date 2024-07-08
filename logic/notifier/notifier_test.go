@@ -30,7 +30,7 @@ func TestSendNotification(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	err := sendNotification(ts.URL, "test-text")
+	err := sendNotification(context.Background(), ts.URL, "test-text")
 
 	if err != nil {
 		t.Fatalf("error: %v", err)
