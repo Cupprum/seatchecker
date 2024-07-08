@@ -24,7 +24,6 @@ import (
 )
 
 var tracer trace.Tracer
-var tp *sdktrace.TracerProvider
 
 type InEvent struct {
 	Window int `json:"window"`
@@ -125,7 +124,7 @@ func main() {
 	}
 
 	// Create a new tracer provider with a batch span processor and the otlp exporter
-	tp = sdktrace.NewTracerProvider(
+	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(exp),
 	)
