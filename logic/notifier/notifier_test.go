@@ -17,6 +17,13 @@ func TestGenerateText(t *testing.T) {
 }
 
 func TestSendNotification(t *testing.T) {
+	ctx := context.Background()
+	cleanup, err := setupOtel(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Fatalf("wrong http method, expected: POST, received: %v", r.Method)
@@ -30,7 +37,7 @@ func TestSendNotification(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	err := sendNotification(context.Background(), ts.URL, "test-text")
+	err = sendNotification(ctx, ts.URL, "test-text")
 
 	if err != nil {
 		t.Fatalf("error: %v", err)
@@ -38,13 +45,20 @@ func TestSendNotification(t *testing.T) {
 }
 
 func TestHandler(t *testing.T) {
+	ctx := context.Background()
+	cleanup, err := setupOtel(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer ts.Close()
 
 	os.Setenv("SEATCHECKER_NTFY_ENDPOINT", ts.URL)
 
 	i := InEvent{Window: 4, Middle: 0, Aisle: 2}
-	o, err := handler(context.Background(), i)
+	o, err := handler(ctx, i)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
