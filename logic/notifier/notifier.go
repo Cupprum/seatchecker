@@ -12,7 +12,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
-	otellambda "go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -24,6 +23,47 @@ import (
 )
 
 var tracer trace.Tracer
+var tp *sdktrace.TracerProvider
+
+func setupOtel(ctx context.Context) (func(), error) {
+	// Configure a new OTLP exporter using environment variables for sending data to Honeycomb over gRPC
+	client := otlptracegrpc.NewClient()
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return func() {}, fmt.Errorf("failed to initialize exporter: %e", err)
+	}
+
+	detector := lambdadetector.NewResourceDetector()
+	res, err := detector.Detect(context.Background())
+	if err != nil {
+		fmt.Printf("failed to detect lambda resources: %v\n", err)
+	}
+
+	// Create a new tracer provider with a batch span processor and the otlp exporter
+	tp = sdktrace.NewTracerProvider(
+		sdktrace.WithResource(res),
+		sdktrace.WithBatcher(exp),
+	)
+
+	// Register the global Tracer provider
+	otel.SetTracerProvider(tp)
+
+	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		),
+	)
+
+	tracer = tp.Tracer("seatchecher-notifier-lambda")
+
+	// Handle shutdown to ensure all sub processes are closed correctly and telemetry is exported
+	return func() {
+		_ = exp.Shutdown(ctx)
+		_ = tp.Shutdown(ctx)
+	}, nil
+}
 
 type InEvent struct {
 	Window int `json:"window"`
@@ -71,18 +111,23 @@ func sendNotification(ctx context.Context, endpoint string, text string) error {
 }
 
 func handler(ctx context.Context, e InEvent) (OutEvent, error) {
+	defer func() { tp.ForceFlush(ctx) }()
 	ctx, span := tracer.Start(ctx, "handler")
 	defer span.End()
+
+	throwErr := func(msg string) error {
+		span.SetStatus(codes.Error, msg)
+		fmt.Fprintln(os.Stderr, msg)
+		err := errors.New(msg)
+		span.RecordError(err)
+		return err
+	}
 
 	log.Printf("Received Event: %v\n", e)
 
 	ep := os.Getenv("SEATCHECKER_NTFY_ENDPOINT")
 	if ep == "" {
-		msg := "env var 'SEATCHECKER_NTFY_ENDPOINT' is not configured"
-		span.SetStatus(codes.Error, msg)
-		fmt.Fprintln(os.Stderr, msg)
-		err := errors.New(msg)
-		span.RecordError(err)
+		err := throwErr("env var 'SEATCHECKER_NTFY_ENDPOINT' is not configured")
 		return OutEvent{Status: 500}, err
 	}
 
@@ -95,10 +140,7 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	err := sendNotification(ctx, ep, text)
 	if err != nil {
 		msg := fmt.Sprintf("sendNotification failed, error: %v", err)
-		span.SetStatus(codes.Error, msg)
-		fmt.Fprintln(os.Stderr, msg)
-		err = errors.New(msg)
-		span.RecordError(err)
+		err := throwErr(msg)
 		return OutEvent{Status: 500}, err
 	}
 	log.Println("Notification sent successfully.")
@@ -110,46 +152,13 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 func main() {
 	ctx := context.Background()
 
-	// Configure a new OTLP exporter using environment variables for sending data to Honeycomb over gRPC
-	client := otlptracegrpc.NewClient()
-	exp, err := otlptrace.New(ctx, client)
+	cleanup, err := setupOtel(ctx)
 	if err != nil {
-		log.Fatalf("failed to initialize exporter: %e", err)
+		log.Fatal(err)
 	}
+	defer cleanup()
 
-	detector := lambdadetector.NewResourceDetector()
-	res, err := detector.Detect(context.Background())
-	if err != nil {
-		fmt.Printf("failed to detect lambda resources: %v\n", err)
-	}
-
-	// Create a new tracer provider with a batch span processor and the otlp exporter
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(res),
-		sdktrace.WithBatcher(exp),
-	)
-
-	// Handle shutdown to ensure all sub processes are closed correctly and telemetry is exported
-	defer func() {
-		_ = exp.Shutdown(ctx)
-		_ = tp.Shutdown(ctx)
-	}()
-
-	// Register the global Tracer provider
-	otel.SetTracerProvider(tp)
-
-	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
-
-	tracer = tp.Tracer("seatchecher-notifier-lambda")
-
-	lambda.Start(otellambda.InstrumentHandler(handler, otellambda.WithTracerProvider(tp), otellambda.WithFlusher(tp)))
+	lambda.Start(handler)
 	// resp, _ := handler(ctx, InEvent{Window: 4, Middle: 2, Aisle: 1})
 	// log.Println(resp)
-	// tp.ForceFlush(ctx)
 }
