@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -98,7 +101,16 @@ func sendNotification(ctx context.Context, endpoint string, text string) error {
 	req.Header.Set("Title", "Seatchecker")
 	req.Header.Set("Tags", "airplane")
 
-	res, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Transport: otelhttp.NewTransport(
+			http.DefaultTransport,
+			otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+				return otelhttptrace.NewClientTrace(ctx)
+			}),
+		),
+	}
+
+	res, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %v", err)
 	}
