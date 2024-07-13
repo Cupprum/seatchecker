@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -13,6 +14,37 @@ func TestGenerateText(t *testing.T) {
 	ex := "Window: 4, Middle: 0, Aisle: 2"
 	if ex != o {
 		t.Fatalf("wrong output, expected: %v, received: %v", ex, o)
+	}
+}
+
+func TestExecutePostRequest(t *testing.T) {
+	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-notifier-lambda-test")
+
+	ctx := context.Background()
+	cleanup, err := setupOtel(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Fatalf("wrong http method, expected: POST, received: %v", r.Method)
+		}
+		if r.Header["Testkey"][0] != "Testval" {
+			t.Fatalf("wrong title, expected: Seatchecker, received: %v", r.Header["Title"][0])
+		}
+	}))
+	defer ts.Close()
+
+	h := map[string]string{
+		"Testkey": "Testval",
+	}
+	b := strings.NewReader("test-text")
+	err = executePostRequest(ctx, ts.URL, h, b)
+
+	if err != nil {
+		t.Fatalf("error: %v", err)
 	}
 }
 
