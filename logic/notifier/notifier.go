@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptrace"
@@ -20,7 +21,6 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -51,13 +51,14 @@ func setupOtel(ctx context.Context) (func(), error) {
 	// Register the global Tracer provider
 	otel.SetTracerProvider(tp)
 
-	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
+	// TODO: whats the purpose of this?
+	// // Register the W3C trace context and baggage propagators so data is propagated across services/processes
+	// otel.SetTextMapPropagator(
+	// 	propagation.NewCompositeTextMapPropagator(
+	// 		propagation.TraceContext{},
+	// 		propagation.Baggage{},
+	// 	),
+	// )
 
 	tracer = tp.Tracer("seatchecher-notifier-lambda")
 
@@ -82,24 +83,21 @@ func generateText(e InEvent) string {
 	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", e.Window, e.Middle, e.Aisle)
 }
 
-func sendNotification(ctx context.Context, endpoint string, text string) error {
-	_, span := tracer.Start(ctx, "send-notification")
-	defer span.End()
-
+func executePostRequest(ctx context.Context, endpoint string, headers map[string]string, body io.Reader) error {
 	m := "POST"
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return fmt.Errorf("failed to parse URL: %v", err)
 	}
 
-	b := strings.NewReader(text)
-	req, err := http.NewRequest(m, u.String(), b)
+	req, err := http.NewRequestWithContext(ctx, m, u.String(), body)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
-	req.Header.Set("Title", "Seatchecker")
-	req.Header.Set("Tags", "airplane")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	client := &http.Client{
 		Transport: otelhttp.NewTransport(
@@ -122,20 +120,38 @@ func sendNotification(ctx context.Context, endpoint string, text string) error {
 	return nil
 }
 
+func sendNotification(ctx context.Context, endpoint string, text string) error {
+	ctx, span := tracer.Start(ctx, "send notification")
+	defer span.End()
+
+	h := map[string]string{
+		"Title": "Seatchecker",
+		"Tags":  "airplane",
+	}
+	b := strings.NewReader(text)
+
+	err := executePostRequest(ctx, endpoint, h, b)
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %v", err)
+	}
+
+	return nil
+}
+
 func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	defer func() { tp.ForceFlush(ctx) }()
 	ctx, span := tracer.Start(ctx, "handler")
 	defer span.End()
 
+	log.Printf("Received Event: %v\n", e)
+
 	throwErr := func(msg string) error {
 		span.SetStatus(codes.Error, msg)
 		fmt.Fprintln(os.Stderr, msg)
 		err := errors.New(msg)
-		span.RecordError(err)
+		span.RecordError(err, trace.WithStackTrace(true))
 		return err
 	}
-
-	log.Printf("Received Event: %v\n", e)
 
 	ep := os.Getenv("SEATCHECKER_NTFY_ENDPOINT")
 	if ep == "" {
@@ -144,10 +160,10 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	}
 
 	log.Println("Send notification.")
-	text := generateText(e)
 
-	span.SetAttributes(attribute.String("text", text))
+	text := generateText(e)
 	span.AddEvent("text generated")
+	span.SetAttributes(attribute.String("text", text))
 
 	err := sendNotification(ctx, ep, text)
 	if err != nil {
