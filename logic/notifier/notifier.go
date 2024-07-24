@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -51,14 +52,13 @@ func setupOtel(ctx context.Context) (func(), error) {
 	// Register the global Tracer provider
 	otel.SetTracerProvider(tp)
 
-	// TODO: whats the purpose of this?
-	// // Register the W3C trace context and baggage propagators so data is propagated across services/processes
-	// otel.SetTextMapPropagator(
-	// 	propagation.NewCompositeTextMapPropagator(
-	// 		propagation.TraceContext{},
-	// 		propagation.Baggage{},
-	// 	),
-	// )
+	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator( // TODO: if i am not going to use the baggage, i can remove the composite.
+			propagation.TraceContext{},
+			// propagation.Baggage{}, // TODO: i am not using Baggage for now, so i do not need to propagate it.
+		),
+	)
 
 	tracer = tp.Tracer("seatchecher-notifier-lambda")
 
