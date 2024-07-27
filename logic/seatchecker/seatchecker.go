@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,9 +11,15 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
+
+type InEvent struct{}
+
+type OutEvent struct {
+	Status int    `json:"status"`
+	Body   string `json:"body"`
+}
 
 type RClient struct {
 	scheme string
@@ -294,7 +301,7 @@ func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 	return r.Data.Seats[0].UnavailableSeats, nil
 }
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	log.Println("Program started.")
 
 	email := os.Getenv("SEATCHECKER_EMAIL")
@@ -349,9 +356,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	log.Println(seats)
 
 	log.Println("Program finished successfully.")
-	return events.APIGatewayProxyResponse{
-		Body:       fmt.Sprintln(seats),
-		StatusCode: 200,
+	return OutEvent{
+		Body:   fmt.Sprintln(seats),
+		Status: 200,
 	}, nil
 }
 
