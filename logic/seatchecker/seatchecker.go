@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 type InEvent struct{}
@@ -302,16 +300,20 @@ func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
 }
 
 func handler(ctx context.Context, e InEvent) (OutEvent, error) {
-	log.Println("Program started.")
+	defer func() { tp.ForceFlush(ctx) }()
+	ctx, span := tracer.Start(ctx, "handler")
+	defer span.End()
 
-	email := os.Getenv("SEATCHECKER_EMAIL")
+	log.Printf("Received Event: %v\n", e)
+
+	email := os.Getenv("SEATCHECKER_RYANAIR_EMAIL")
 	if email == "" {
-		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_EMAIL' is not configured")
+		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_RYANAIR_EMAIL' is not configured")
 		os.Exit(1)
 	}
-	password := os.Getenv("SEATCHECKER_PASSWORD")
+	password := os.Getenv("SEATCHECKER_RYANAIR_PASSWORD")
 	if password == "" {
-		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_PASSWORD' is not configured")
+		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_RYANAIR_PASSWORD' is not configured")
 		os.Exit(1)
 	}
 
@@ -363,5 +365,16 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 }
 
 func main() {
-	lambda.Start(handler)
+	ctx := context.Background()
+
+	cleanup, err := setupOtel(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cleanup()
+
+	// lambda.Start(handler)
+	resp, _ := handler(ctx, InEvent{})
+	log.Println(resp)
+
 }
