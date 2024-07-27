@@ -18,7 +18,7 @@ func TestGenerateText(t *testing.T) {
 }
 
 func TestExecutePostRequest(t *testing.T) {
-	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-notifier-lambda-test")
+	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-test")
 
 	ctx := context.Background()
 	cleanup, err := setupOtel(ctx)
@@ -49,7 +49,7 @@ func TestExecutePostRequest(t *testing.T) {
 }
 
 func TestSendNotification(t *testing.T) {
-	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-notifier-lambda-test")
+	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-test")
 
 	ctx := context.Background()
 	cleanup, err := setupOtel(ctx)
@@ -79,7 +79,7 @@ func TestSendNotification(t *testing.T) {
 }
 
 func TestHandler(t *testing.T) {
-	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-notifier-lambda-test")
+	os.Setenv("OTEL_SERVICE_NAME", "seatchecker-test")
 
 	ctx := context.Background()
 	cleanup, err := setupOtel(ctx)
