@@ -58,6 +58,10 @@ resource "aws_lambda_function" "seatchecker" {
     variables = {
       SEATCHECKER_EMAIL    = "xxx"
       SEATCHECKER_PASSWORD = "xxx"
+      OTEL_SERVICE_NAME           = "seatchecker"
+      OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT = "https://api.eu1.honeycomb.io"
+      OTEL_EXPORTER_OTLP_HEADERS  = "x-honeycomb-team=${var.honeycomb_api_key}"
     }
   }
 }
@@ -80,7 +84,7 @@ resource "aws_lambda_function" "notifier" {
   environment {
     variables = {
       SEATCHECKER_NTFY_ENDPOINT      = var.seatchecker_ntfy_endpoint
-      OTEL_SERVICE_NAME           = "seatchecker-notifier-lambda"
+      OTEL_SERVICE_NAME           = "seatchecker"
       OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
       OTEL_EXPORTER_OTLP_ENDPOINT = "https://api.eu1.honeycomb.io"
       OTEL_EXPORTER_OTLP_HEADERS  = "x-honeycomb-team=${var.honeycomb_api_key}"
