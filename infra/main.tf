@@ -56,8 +56,8 @@ resource "aws_lambda_function" "seatchecker" {
 
   environment {
     variables = {
-      SEATCHECKER_EMAIL    = "xxx"
-      SEATCHECKER_PASSWORD = "xxx"
+      SEATCHECKER_RYANAIR_EMAIL    = "xxx"
+      SEATCHECKER_RYANAIR_PASSWORD = "xxx"
       OTEL_SERVICE_NAME           = "seatchecker"
       OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
       OTEL_EXPORTER_OTLP_ENDPOINT = "https://api.eu1.honeycomb.io"
