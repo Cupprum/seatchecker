@@ -1,8 +1,31 @@
 {
   "Comment": "Monitoring the state of seats on next flight and informing user.",
-  "StartAt": "Lambda Invoke",
+  "StartAt": "Search for seats",
   "States": {
-    "Lambda Invoke": {
+    "Search for seats": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:eu-central-1:666914038100:function:seatchecker:$LATEST",
+        "Payload": {}
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Send notification"
+    },
+    "Send notification": {
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "OutputPath": "$.Payload",
