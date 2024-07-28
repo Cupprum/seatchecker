@@ -35,7 +35,8 @@ func PackageGoLambda(src *Directory, module string) *Directory {
 		"-tags", "lambda.norpc", // Do not include RPC part of library.
 		"-o", module,
 		"-ldflags", "-w", // Reduce size of output binary.
-		fmt.Sprintf("%s.go", module)})
+		"."})
+	// fmt.Sprintf("%s.go", module)})
 
 	out := build.
 		WithExec([]string{"mkdir", "/out"}).
