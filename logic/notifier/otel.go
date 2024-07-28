@@ -8,12 +8,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
-var tracer trace.Tracer
+var tr trace.Tracer
 var tp *sdktrace.TracerProvider
 
 func setupOtel(ctx context.Context) (func(), error) {
@@ -25,7 +24,7 @@ func setupOtel(ctx context.Context) (func(), error) {
 	}
 
 	detector := lambdadetector.NewResourceDetector()
-	res, err := detector.Detect(context.Background())
+	res, err := detector.Detect(ctx)
 	if err != nil {
 		fmt.Printf("failed to detect lambda resources: %v\n", err)
 	}
@@ -39,15 +38,7 @@ func setupOtel(ctx context.Context) (func(), error) {
 	// Register the global Tracer provider
 	otel.SetTracerProvider(tp)
 
-	// Register the W3C trace context and baggage propagators so data is propagated across services/processes
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator( // TODO: if i am not going to use the baggage, i can remove the composite.
-			propagation.TraceContext{},
-			// propagation.Baggage{}, // TODO: i am not using Baggage for now, so i do not need to propagate it.
-		),
-	)
-
-	tracer = tp.Tracer("") // TODO: should i provide here tracer name, last used was "seatchecker-seatchecker-lambda"
+	tr = tp.Tracer("seatchecker-lambda")
 
 	// Handle shutdown to ensure all sub processes are closed correctly and telemetry is exported
 	return func() {

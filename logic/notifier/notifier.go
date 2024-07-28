@@ -72,7 +72,7 @@ func executePostRequest(ctx context.Context, endpoint string, headers map[string
 }
 
 func sendNotification(ctx context.Context, endpoint string, text string) error {
-	ctx, span := tracer.Start(ctx, "send notification")
+	ctx, span := tr.Start(ctx, "send notification")
 	defer span.End()
 
 	h := map[string]string{
@@ -91,7 +91,7 @@ func sendNotification(ctx context.Context, endpoint string, text string) error {
 
 func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	defer func() { tp.ForceFlush(ctx) }()
-	ctx, span := tracer.Start(ctx, "handler")
+	ctx, span := tr.Start(ctx, "handler")
 	defer span.End()
 
 	log.Printf("Received Event: %v\n", e)
