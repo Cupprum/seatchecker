@@ -28,12 +28,10 @@ jobs:
           --infra="../../infra"
           --access_key="env:SEATCHECKER_AWS_ACCESS_KEY_ID"
           --secret_key="env:SEATCHECKER_AWS_SECRET_ACCESS_KEY"
-          --ntfy_endpoint="env:SEATCHECKER_NTFY_ENDPOINT"
           --honeycomb_api_key="env:SEATCHECKER_HONEYCOMB_API_KEY"
         cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
       env:
         SEATCHECKER_AWS_ACCESS_KEY_ID: ${{ secrets.SEATCHECKER_AWS_ACCESS_KEY_ID }}
         SEATCHECKER_AWS_SECRET_ACCESS_KEY: ${{ secrets.SEATCHECKER_AWS_SECRET_ACCESS_KEY }}
-        SEATCHECKER_NTFY_ENDPOINT: ${{ secrets.SEATCHECKER_NTFY_TOPIC }}
         SEATCHECKER_HONEYCOMB_API_KEY: ${{ secrets.SEATCHECKER_HONEYCOMB_API_KEY }}

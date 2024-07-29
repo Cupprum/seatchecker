@@ -36,7 +36,6 @@ func PackageGoLambda(src *Directory, module string) *Directory {
 		"-o", module,
 		"-ldflags", "-w", // Reduce size of output binary.
 		"."})
-	// fmt.Sprintf("%s.go", module)})
 
 	out := build.
 		WithExec([]string{"mkdir", "/out"}).
@@ -80,8 +79,6 @@ func (m *Cicd) Apply(
 	access_key *Secret,
 	// AWS Secret Access Key.
 	secret_key *Secret,
-	// Name of the ntfy.sh topic.
-	ntfy_endpoint *Secret,
 	// Honeycomb.io api key representing the team.
 	honeycomb_api_key *Secret,
 ) (string, error) {
@@ -93,7 +90,6 @@ func (m *Cicd) Apply(
 	tf := TerraformContainer(infra, access_key, secret_key).
 		WithDirectory("/out/seatchecker", sc).
 		WithDirectory("/out/notifier", nt).
-		WithSecretVariable("TF_VAR_seatchecker_ntfy_endpoint", ntfy_endpoint).
 		WithSecretVariable("TF_VAR_honeycomb_api_key", honeycomb_api_key)
 
 	// Ensure that Terraform apply operation is never cached.
