@@ -114,7 +114,7 @@ func TestAccountLogin(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := RClient{scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
 	cARes, err := c.accountLogin(e, p)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestGetBookingId(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := RClient{scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 	rId, err := c.getBookingId(cAReq)
 	if err != nil {
 		t.Fatalf("failed to get booking id: %v", err)
@@ -194,7 +194,7 @@ func TestGetBookingById(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := RClient{scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 	cAReq := CAuth{"customerid", "token"}
 	bA, err := c.getBookingById(cAReq, "booking_id")
 	if err != nil {
@@ -232,7 +232,7 @@ func TestCreateBasket(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := RClient{scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
 	bId, err := c.createBasket(bA)
 	if err != nil {
@@ -245,7 +245,7 @@ func TestCreateBasket(t *testing.T) {
 
 func TestGetSeatsQuery(t *testing.T) {
 	bId := "basket_id"
-	s := []string{"01A", "01B", "01C"}
+	s := SQSeats{[]string{"01A", "01B", "01C"}, "30A"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -259,7 +259,7 @@ func TestGetSeatsQuery(t *testing.T) {
 
 		// Create fake response
 		rres := GqlResponse[SQData]{
-			Data: SQData{Seats: []SQSeats{{UnavailableSeats: s}}},
+			Data: SQData{Seats: []SQSeats{s}},
 		}
 
 		res, _ := json.Marshal(rres)
@@ -268,7 +268,7 @@ func TestGetSeatsQuery(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := RClient{scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
 	qs, err := c.getSeatsQuery(bId)
 	if err != nil {

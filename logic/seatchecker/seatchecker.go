@@ -12,14 +12,20 @@ import (
 	"os"
 )
 
-type InEvent struct{}
-
-type OutEvent struct {
-	Status int    `json:"status"`
-	Body   string `json:"body"`
+type InEvent struct {
+	RyanairEmail    string `json:"ryanair_email"`
+	RyanairPassword string `json:"ryanair_password"`
+	NtfyTopic       string `json:"ntfy_topic"`
+	Window          int    `json:"window"`
+	Middle          int    `json:"middle"`
+	Aisle           int    `json:"aisle"`
 }
 
-type RClient struct {
+type OutEvent struct {
+	Status int `json:"status"`
+}
+
+type Client struct {
 	scheme string
 	fqdn   string
 }
@@ -51,6 +57,7 @@ func (r Request) creator() (*http.Request, error) {
 		}
 	}
 
+	// TODO: add context to the request creation.
 	req, err := http.NewRequest(r.method, u.String(), bytes.NewBuffer(buf))
 	if err != nil {
 		return nil, fmt.Errorf("failed to form request: %v", err)
@@ -79,6 +86,10 @@ func httpsRequest[T any](req Request) (T, error) {
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode != 200 {
+		return nilT, fmt.Errorf("request return invalid code: %v", res.StatusCode)
+	}
+
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nilT, fmt.Errorf("failed to read response: %v", err)
@@ -92,7 +103,7 @@ func httpsRequest[T any](req Request) (T, error) {
 	return t, nil
 }
 
-func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, headers http.Header) (T, error) {
+func httpsRequestGet[T any](c Client, path string, queryParams url.Values, headers http.Header) (T, error) {
 	r := Request{
 		"GET",
 		c.scheme,
@@ -105,7 +116,7 @@ func httpsRequestGet[T any](c RClient, path string, queryParams url.Values, head
 	return httpsRequest[T](r)
 }
 
-func httpsRequestPost[T any](c RClient, path string, body any) (T, error) {
+func httpsRequestPost[T any](c Client, path string, body any) (T, error) {
 	r := Request{
 		"POST",
 		c.scheme,
@@ -118,248 +129,45 @@ func httpsRequestPost[T any](c RClient, path string, body any) (T, error) {
 	return httpsRequest[T](r)
 }
 
-type CAuth struct {
-	CustomerID string `json:"customerId"`
-	Token      string `json:"token"`
-}
-
-func (c RClient) accountLogin(email string, password string) (CAuth, error) {
-	p := "api/usrprof/v2/accountLogin"
-
-	b := struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}{
-		email,
-		password,
-	}
-
-	a, err := httpsRequestPost[CAuth](c, p, b)
-	if err != nil {
-		return CAuth{}, fmt.Errorf("failed to get account login: %v", err)
-	}
-
-	return a, nil
-}
-
-type BIdFlight struct {
-	BookingId string `json:"bookingId"`
-}
-type BIdItem struct {
-	Flights []BIdFlight `json:"flights"`
-}
-type BIdResp struct {
-	Items []BIdItem `json:"items"`
-}
-
-func (c RClient) getBookingId(a CAuth) (string, error) {
-	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
-	if err != nil {
-		return "", fmt.Errorf("failed to create path: %v", err)
-	}
-
-	q := url.Values{}
-	q.Add("active", "true")
-	q.Add("order", "ASC")
-
-	h := http.Header{
-		"X-Auth-Token": {a.Token},
-	}
-
-	r, err := httpsRequestGet[BIdResp](c, p, q, h)
-	if err != nil {
-		return "", fmt.Errorf("failed to get orders: %v", err)
-	}
-
-	// Items only contain single item.
-	// Flights contain a single booking with multiple segments of flight.
-	return r.Items[0].Flights[0].BookingId, nil
-}
-
-type GqlQuery[T any] struct {
-	Query     string `json:"query"`
-	Variables T      `json:"variables"`
-}
-
-type GqlResponse[T any] struct {
-	Data T `json:"data"`
-}
-
-type BAuth struct {
-	TripId       string `json:"tripId"`
-	SessionToken string `json:"sessionToken"`
-}
-
-type BBIdInfo struct {
-	BookingId   string `json:"bookingId"`
-	SurrogateId string `json:"surrogateId"`
-}
-
-type BBIdVars struct {
-	BookingInfo BBIdInfo `json:"bookingInfo"`
-	AuthToken   string   `json:"authToken"`
-}
-
-type BBIdData struct {
-	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
-}
-
-func (c RClient) getBookingById(a CAuth, bookingId string) (BAuth, error) {
-	p := "api/bookingfa/en-gb/graphql"
-
-	q := `
-		query GetBookingByBookingId($bookingInfo: GetBookingByBookingIdInputType, $authToken: String!) {
-			getBookingByBookingId(bookingInfo: $bookingInfo, authToken: $authToken) {
-				sessionToken
-				tripId
-			}
-		}
-	`
-	v := BBIdVars{
-		BBIdInfo{bookingId, a.CustomerID},
-		a.Token,
-	}
-	b := GqlQuery[BBIdVars]{Query: q, Variables: v}
-
-	r, err := httpsRequestPost[GqlResponse[BBIdData]](c, p, b)
-	if err != nil {
-		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
-	}
-
-	return r.Data.GetBookingByBookingId, nil
-}
-
-type BBasket struct {
-	Id string `json:"id"`
-}
-
-type BData struct {
-	Basket BBasket `json:"createBasketForActiveTrip"`
-}
-
-func (c RClient) createBasket(a BAuth) (string, error) {
-	p := "api/basketapi/en-gb/graphql"
-
-	q := `
-		mutation CreateBasketForActiveTrip($tripId: String!, $sessionToken: String) {
-			createBasketForActiveTrip(tripId: $tripId, sessionToken: $sessionToken) {
-				...BasketCommon
-			}
-		}
-		fragment BasketCommon on BasketType {
-			id
-		}
-	`
-	b := GqlQuery[BAuth]{Query: q, Variables: a}
-
-	r, err := httpsRequestPost[GqlResponse[BData]](c, p, b)
-	if err != nil {
-		return "", fmt.Errorf("failed to create basket: %v", err)
-	}
-
-	return r.Data.Basket.Id, nil
-}
-
-type SQBasket struct {
-	BId string `json:"basketId"`
-}
-
-type SQSeats struct {
-	UnavailableSeats []string `json:"unavailableSeats"`
-}
-
-type SQData struct {
-	Seats []SQSeats `json:"seats"`
-}
-
-func (c RClient) getSeatsQuery(basketId string) ([]string, error) {
-	p := "api/catalogapi/en-gb/graphql"
-
-	q := `
-		query GetSeatsQuery($basketId: String!) {
-			seats(basketId: $basketId) {
-				...SeatsResponse
-			}
-		}
-		fragment SeatsResponse on SeatAvailability {
-			unavailableSeats
-		}
-	`
-	v := SQBasket{
-		basketId,
-	}
-	b := GqlQuery[SQBasket]{Query: q, Variables: v}
-
-	r, err := httpsRequestPost[GqlResponse[SQData]](c, p, b)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get seats: %v", err)
-	}
-
-	// TODO: what is this supposed to return? always first? what if i ma on the way back?
-	return r.Data.Seats[0].UnavailableSeats, nil
+func generateText(w int, m int, a int) string {
+	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", w, m, a)
 }
 
 func handler(ctx context.Context, e InEvent) (OutEvent, error) {
+	// TODO: configure opentelemetry
 	defer func() { tp.ForceFlush(ctx) }()
-	ctx, span := tracer.Start(ctx, "handler")
+	ctx, span := tr.Start(ctx, "handler")
 	defer span.End()
 
 	log.Printf("Received Event: %v\n", e)
 
-	email := os.Getenv("SEATCHECKER_RYANAIR_EMAIL")
-	if email == "" {
-		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_RYANAIR_EMAIL' is not configured")
-		os.Exit(1)
-	}
-	password := os.Getenv("SEATCHECKER_RYANAIR_PASSWORD")
-	if password == "" {
-		fmt.Fprintf(os.Stderr, "env var 'SEATCHECKER_RYANAIR_PASSWORD' is not configured")
-		os.Exit(1)
-	}
+	// TODO: verify the input event
 
-	log.Println("Configuration successful.")
+	w, m, a, err := queryRyanair(e.RyanairEmail, e.RyanairPassword)
+	if err != nil {
+		log.Fatal("Failed to query Ryanair for seats.")
+		return OutEvent{Status: 500}, err
+	}
+	log.Println("Seats from Ryanair retrieved successfully.")
 
-	catchErr := func(err error) {
+	pTxt := generateText(e.Window, e.Middle, e.Aisle)
+	cTxt := generateText(w, m, a)
+	log.Printf("Previous execution: %v", pTxt)
+	log.Printf("Current execution: %v", cTxt)
+
+	if pTxt != cTxt {
+		err := sendNotification(context.Background(), e.NtfyTopic, cTxt)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			log.Fatal("Failed to send notification.")
+			return OutEvent{Status: 500}, err
 		}
+		log.Println("Notification sent successfully.")
 	}
 
-	client := RClient{
-		scheme: "https",
-		fqdn:   "www.ryanair.com",
-	}
-
-	log.Printf("Start account login for user: %s.\n", email)
-	cAuth, err := client.accountLogin(email, password)
-	catchErr(err) // TODO: probably i will have to rethink exceptions -> Why?
-	log.Println("Account login finished successfully.")
-
-	log.Println("Get closest Booking ID.")
-	bookingId, err := client.getBookingId(cAuth)
-	catchErr(err)
-	log.Printf("Booking ID retrieved successfully: %s.\n", bookingId)
-
-	log.Printf("Get Booking with ID: %s.\n", bookingId)
-	bAuth, err := client.getBookingById(cAuth, bookingId)
-	catchErr(err)
-	log.Printf("Booking retrieved successfully, Trip ID: %s.\n", bAuth.TripId)
-
-	log.Println("Create basket.")
-	basketId, err := client.createBasket(bAuth)
-	catchErr(err)
-	log.Printf("Basket created successfully, Basket ID: %s.\n", basketId)
-
-	log.Println("Get seats.")
-	seats, err := client.getSeatsQuery(basketId)
-	catchErr(err)
-	log.Println("Seats retrieved successfully.")
-	log.Println(seats)
+	// TODO: add event to SQS
 
 	log.Println("Program finished successfully.")
 	return OutEvent{
-		Body:   fmt.Sprintln(seats),
 		Status: 200,
 	}, nil
 }
@@ -367,6 +175,7 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 func main() {
 	ctx := context.Background()
 
+	// TODO: try to simplify OTEL through ADOT.
 	cleanup, err := setupOtel(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -374,7 +183,15 @@ func main() {
 	defer cleanup()
 
 	// lambda.Start(handler)
-	resp, _ := handler(ctx, InEvent{})
+	i := InEvent{
+		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+		Window:          99,
+		Middle:          99,
+		Aisle:           99,
+	}
+	resp, _ := handler(ctx, i)
 	log.Println(resp)
 
 }
