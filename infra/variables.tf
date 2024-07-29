@@ -1,4 +1,4 @@
-variable "seatchecker_ntfy_endpoint" {
+variable "seatchecker_ntfy_topic" {
   type    = string
   default = "xxx"
 }
