@@ -212,6 +212,7 @@ func (c Client) getNumberOfRows(model string) (int, error) {
 		return 0, fmt.Errorf("failed to get seatmap: %v", err)
 	}
 
+	// TODO: add comments
 	sr := e[0].SeatRows
 	maxRow := sr[len(sr)-1][0].Row
 
@@ -219,7 +220,7 @@ func (c Client) getNumberOfRows(model string) (int, error) {
 }
 
 // TODO: can this return struct and generateText work on that struct and some other struct?
-func calculateSeats(rows int, seats []string) (int, int, int) {
+func calculateEmptySeats(rows int, seats []string) (int, int, int) {
 	window := rows * 2
 	middle := rows * 2
 	aisle := rows * 2
@@ -291,7 +292,7 @@ func queryRyanair(email string, password string) (int, int, int, error) {
 	log.Println(rows)
 
 	log.Println("Calculate number of empty seats.")
-	window, middle, aisle := calculateSeats(rows, seats.UnavailableSeats)
+	window, middle, aisle := calculateEmptySeats(rows, seats.UnavailableSeats)
 
 	return window, middle, aisle, nil
 }
