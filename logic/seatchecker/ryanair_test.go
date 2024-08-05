@@ -16,6 +16,7 @@ func TestAccountLogin(t *testing.T) {
 	cAReq := CAuth{"customerid", "token"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
 		rawB, _ := io.ReadAll(r.Body)
 		b := map[string]any{}
 		json.Unmarshal(rawB, &b)
@@ -25,18 +26,19 @@ func TestAccountLogin(t *testing.T) {
 		if p != b["password"] {
 			t.Fatalf("wrong password, expected: %v, received: %v", e, b["password"])
 		}
+
+		// Create fake response
 		res, _ := json.Marshal(cAReq)
 		fmt.Fprintln(w, string(res))
 	}))
 	defer ts.Close()
 
+	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-
 	cARes, err := c.accountLogin(e, p)
 	if err != nil {
 		t.Fatalf("failed to get account login: %v", err)
 	}
-
 	if cAReq != cARes {
 		t.Fatalf("wrong response, expected: %v, received %v", cAReq, cARes)
 	}
