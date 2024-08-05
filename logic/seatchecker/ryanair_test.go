@@ -228,19 +228,36 @@ func TestGetNumberOfRows(t *testing.T) {
 }
 
 func TestCalculateEmptySeats(t *testing.T) {
-	// TODO: implement
 	r := 4
-	s := []string{""}
 
-	ew, em, ea := 5, 0, 3
-
-	w, m, a := calculateEmptySeats(r, s)
-
-	if w != ew || m != em || a != ea {
-		eTxt := generateText(ew, em, ea)
-		rTxt := generateText(w, m, a)
-		t.Fatalf("wrong number of calculated empty seats, expected: %v, received%v\n", eTxt, rTxt)
+	test := func(s []string, ew int, em int, ea int) {
+		w, m, a := calculateEmptySeats(r, s)
+		if w != ew || m != em || a != ea {
+			eTxt := generateText(ew, em, ea)
+			rTxt := generateText(w, m, a)
+			t.Fatalf("wrong number of calculated empty seats, expected: %v, received: %v\n", eTxt, rTxt)
+		}
 	}
+
+	fs := []string{
+		"01A", "01B", "01C", "01D", "01E", "01F",
+		"02A", "02B", "02C", "02D", "02E", "02F",
+		"03A", "03B", "03C", "03D", "03E", "03F",
+		"04A", "04B", "04C", "04D", "04E", "04F",
+	}
+	test(fs, 0, 0, 0)
+
+	ss := []string{
+		"01A", "01B", "01E",
+		"02B", "02C", "02D", "02E", "02F",
+		"03B", "03C", "03D", "03E", "03F",
+		"04A", "04B", "04C", "04D", "04E",
+	}
+	test(ss, 4, 0, 2)
+
+	ns := []string{}
+	ms := r * 2
+	test(ns, ms, ms, ms)
 }
 
 func TestQueryRyanair(t *testing.T) {
