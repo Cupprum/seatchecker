@@ -7,24 +7,22 @@ import (
 	"os"
 )
 
-type InEvent struct {
+type Event struct {
 	RyanairEmail    string `json:"ryanair_email"`
 	RyanairPassword string `json:"ryanair_password"`
 	NtfyTopic       string `json:"ntfy_topic"`
 	Window          int    `json:"window"`
 	Middle          int    `json:"middle"`
 	Aisle           int    `json:"aisle"`
-}
-
-type OutEvent struct {
-	Status int `json:"status"`
+	Status          int    `json:"status"`
+	Message         string `json:"message"`
 }
 
 func generateText(w int, m int, a int) string {
 	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", w, m, a)
 }
 
-func handler(ctx context.Context, e InEvent) (OutEvent, error) {
+func handler(ctx context.Context, e Event) (Event, error) {
 	// TODO: configure opentelemetry
 	defer func() { tp.ForceFlush(ctx) }()
 	ctx, span := tr.Start(ctx, "handler")
@@ -39,7 +37,7 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Fatalf("Error: %v\n", err)
-		return OutEvent{Status: 500}, err
+		return Event{Status: 500, Message: err.Error()}, err
 	}
 	log.Println("Seats from Ryanair retrieved successfully.")
 
@@ -54,7 +52,7 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 		if err != nil {
 			err = fmt.Errorf("failed to send notification, error: %v", err)
 			log.Fatalf("Error: %v\n", err)
-			return OutEvent{Status: 500}, err
+			return Event{Status: 500, Message: err.Error()}, err
 		}
 		log.Println("Notification sent successfully.")
 	}
@@ -63,9 +61,10 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	e.Window = w
 	e.Middle = m
 	e.Aisle = a
+	e.Status = 200
 
 	log.Println("Program finished successfully.")
-	return OutEvent{Status: 200}, nil
+	return e, nil
 }
 
 func main() {
@@ -79,7 +78,7 @@ func main() {
 	defer cleanup()
 
 	// lambda.Start(handler)
-	i := InEvent{
+	i := Event{
 		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
 		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
 		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),

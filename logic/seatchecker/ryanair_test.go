@@ -6,94 +6,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"strings"
 	"testing"
 )
-
-func TestRequestCreator(t *testing.T) {
-	q := url.Values{}
-	q.Add("query_parameter", "test_query_parameter")
-	h := http.Header{
-		"header": {"test_header"},
-	}
-	b := struct {
-		Payload string `json:"payload"`
-	}{
-		Payload: "test_payload",
-	}
-
-	r := Request{
-		method:      "GET",
-		scheme:      "http",
-		fqdn:        "test",
-		path:        "test_path",
-		queryParams: q,
-		headers:     h,
-		body:        b,
-	}
-
-	cr, err := r.creator()
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-
-	if r.method != cr.Method {
-		t.Fatalf("wrong method, expected: %v, received: %v", r.method, cr.Method)
-	}
-	if r.scheme != cr.URL.Scheme {
-		t.Fatalf("wrong scheme, expected: %v, received: %v", r.scheme, cr.URL.Scheme)
-	}
-	if r.fqdn != cr.URL.Host {
-		t.Fatalf("wrong url, expected: %v, received: %v", r.fqdn, cr.URL.Host)
-	}
-	if !strings.Contains(cr.URL.Path, r.path) {
-		t.Fatalf("wrong path, expected: %v, received: %v", r.path, cr.URL.Path)
-	}
-	if !reflect.DeepEqual(r.queryParams, cr.URL.Query()) {
-		t.Fatalf("wrong query parameters, expected: %v, received: %v", r.queryParams, cr.URL.Query())
-	}
-	if !reflect.DeepEqual(r.headers, cr.Header) {
-		t.Fatalf("wrong headers, expected: %v, received: %v", r.headers, cr.Header)
-	}
-
-	eb := "{\"payload\":\"test_payload\"}"
-	rrb, _ := io.ReadAll(cr.Body)
-	rb := string(rrb)
-	if eb != rb {
-		t.Fatalf("wrong body, expected: %v, received: %v", eb, rb)
-	}
-}
-
-func TestHttpsRequest(t *testing.T) {
-	ca := CAuth{
-		CustomerID: "test_customer_id",
-		Token:      "test_token",
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		res, _ := json.Marshal(ca)
-		fmt.Fprintln(w, string(res))
-	}))
-	defer ts.Close()
-
-	r := Request{
-		"POST",
-		"http",
-		ts.URL,
-		"test_path",
-		nil,
-		nil,
-		nil,
-	}
-	rca, _ := httpsRequest[CAuth](r)
-	fmt.Println(rca)
-
-	if !reflect.DeepEqual(ca, rca) {
-		t.Fatalf("returned struct is incorrect, expected: %v, received: %v", ca, rca)
-	}
-}
 
 func TestAccountLogin(t *testing.T) {
 	e, p := "john@doe.com", "password"
@@ -278,4 +194,55 @@ func TestGetSeatsQuery(t *testing.T) {
 	if !reflect.DeepEqual(s, qs) {
 		t.Fatalf("wrong seats, expected: %v, received: %v", s, qs)
 	}
+}
+
+func TestGetNumberOfRows(t *testing.T) {
+	m := "32A"
+	rows := 30
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check request
+		if !strings.Contains(r.URL.RawQuery, "aircraftModel="+m) {
+			t.Fatalf("missing url encoded query string parameter, name: active")
+		}
+
+		// Create fake response
+		rres := []Equipment{{SeatRows: [][]Seat{{{Row: 1}}, {{Row: rows}}}}}
+
+		res, _ := json.Marshal(rres)
+		fmt.Fprintln(w, string(res))
+	}))
+	defer ts.Close()
+
+	// Check received response
+	c := Client{scheme: "http", fqdn: ts.URL}
+
+	rrows, err := c.getNumberOfRows(m)
+	if err != nil {
+		t.Fatalf("failed to get number of rows: %v\n", err)
+	}
+
+	if rows != rrows {
+		t.Fatalf("wrong number of seats, expected: %v, received: %v\n", rows, rrows)
+	}
+}
+
+func TestCalculateEmptySeats(t *testing.T) {
+	// TODO: implement
+	r := 4
+	s := []string{""}
+
+	ew, em, ea := 5, 0, 3
+
+	w, m, a := calculateEmptySeats(r, s)
+
+	if w != ew || m != em || a != ea {
+		eTxt := generateText(ew, em, ea)
+		rTxt := generateText(w, m, a)
+		t.Fatalf("wrong number of calculated empty seats, expected: %v, received%v\n", eTxt, rTxt)
+	}
+}
+
+func TestQueryRyanair(t *testing.T) {
+	// TODO: implement
 }
