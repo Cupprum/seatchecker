@@ -103,6 +103,10 @@ func (m *Cicd) Apply(
 // Destroy the infrastructure.
 func (m *Cicd) Destroy(
 	ctx context.Context,
+	// Directory containing the seatchecker lambda source code.
+	seatchecker *Directory,
+	// Directory containing the notifier lambda source code.
+	notifier *Directory,
 	// Directory containing the infrastructure.
 	infra *Directory,
 	// AWS Access Key ID.
@@ -110,7 +114,12 @@ func (m *Cicd) Destroy(
 	// AWS Secret Access Key.
 	secret_key *Secret,
 ) (string, error) {
-	tf := TerraformContainer(infra, access_key, secret_key)
+	sc := PackageGoLambda(seatchecker, "seatchecker")
+	nt := PackageGoLambda(notifier, "notifier")
+
+	tf := TerraformContainer(infra, access_key, secret_key).
+		WithDirectory("/out/seatchecker", sc).
+		WithDirectory("/out/notifier", nt)
 	tf = tf.WithExec([]string{"destroy", "-auto-approve"})
 
 	return tf.Stdout(ctx)
