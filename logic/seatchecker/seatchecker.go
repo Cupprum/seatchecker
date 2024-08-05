@@ -143,9 +143,11 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 
 	// TODO: verify the input event
 
+	log.Println("Query Ryanair for seats.")
 	w, m, a, err := queryRyanair(e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
-		log.Fatal("Failed to query Ryanair for seats.")
+		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
+		log.Fatalf("Error: %v\n", err)
 		return OutEvent{Status: 500}, err
 	}
 	log.Println("Seats from Ryanair retrieved successfully.")
@@ -156,20 +158,23 @@ func handler(ctx context.Context, e InEvent) (OutEvent, error) {
 	log.Printf("Current execution: %v", cTxt)
 
 	if pTxt != cTxt {
+		log.Println("Send notification.")
 		err := sendNotification(context.Background(), e.NtfyTopic, cTxt)
 		if err != nil {
-			log.Fatal("Failed to send notification.")
+			err = fmt.Errorf("failed to send notification, error: %v", err)
+			log.Fatalf("Error: %v\n", err)
 			return OutEvent{Status: 500}, err
 		}
 		log.Println("Notification sent successfully.")
 	}
 
-	// TODO: add event to SQS
+	// TODO: polish updating event and generating the message body
+	e.Window = w
+	e.Middle = m
+	e.Aisle = a
 
 	log.Println("Program finished successfully.")
-	return OutEvent{
-		Status: 200,
-	}, nil
+	return OutEvent{Status: 200}, nil
 }
 
 func main() {
