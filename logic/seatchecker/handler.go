@@ -33,7 +33,8 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	// TODO: verify the input event
 
 	log.Println("Query Ryanair for seats.")
-	w, m, a, err := queryRyanair(e.RyanairEmail, e.RyanairPassword)
+	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
+	w, m, a, err := rc.queryRyanair(e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Fatalf("Error: %v\n", err)
@@ -48,7 +49,8 @@ func handler(ctx context.Context, e Event) (Event, error) {
 
 	if pTxt != cTxt {
 		log.Println("Send notification.")
-		err := sendNotification(context.Background(), e.NtfyTopic, cTxt)
+		nc := Client{scheme: "https", fqdn: "ntfy.sh"}
+		err := nc.sendNotification(context.Background(), e.NtfyTopic, cTxt)
 		if err != nil {
 			err = fmt.Errorf("failed to send notification, error: %v", err)
 			log.Fatalf("Error: %v\n", err)
