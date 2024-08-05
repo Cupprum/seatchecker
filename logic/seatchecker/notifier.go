@@ -12,9 +12,9 @@ type Notification struct {
 	Tags    []string `json:"tags"`
 }
 
-func sendNotification(ctx context.Context, topic string, text string) error {
-	_, span := tr.Start(ctx, "send notification")
-	defer span.End()
+func (c Client) sendNotification(ctx context.Context, topic string, text string) error {
+	// _, span := tr.Start(ctx, "send notification")
+	// defer span.End()
 
 	b := Notification{
 		Topic:   topic,
@@ -23,7 +23,6 @@ func sendNotification(ctx context.Context, topic string, text string) error {
 		Tags:    []string{"airplane"},
 	}
 
-	c := Client{scheme: "https", fqdn: "ntfy.sh"}
 	_, err := httpsRequestPost[any](c, "/", b)
 	if err != nil {
 		return fmt.Errorf("failed to send notification: %v", err)
