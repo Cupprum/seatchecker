@@ -240,42 +240,37 @@ func calculateEmptySeats(rows int, seats []string) (int, int, int) {
 }
 
 // TODO: update return values to something more normal
-func queryRyanair(email string, password string) (int, int, int, error) {
-	client := Client{
-		scheme: "https",
-		fqdn:   "www.ryanair.com",
-	}
-
+func (c Client) queryRyanair(email string, password string) (int, int, int, error) {
 	log.Printf("Start account login for user: %s.\n", email)
-	cAuth, err := client.accountLogin(email, password)
+	cAuth, err := c.accountLogin(email, password)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("login failed: %v", err)
 	}
 	log.Println("Account login finished successfully.")
 
 	log.Println("Get closest Booking ID.")
-	bookingId, err := client.getBookingId(cAuth)
+	bookingId, err := c.getBookingId(cAuth)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get booking ID failed: %v", err)
 	}
 	log.Printf("Booking ID retrieved successfully: %s.\n", bookingId)
 
 	log.Printf("Get Booking with ID: %s.\n", bookingId)
-	bAuth, err := client.getBookingById(cAuth, bookingId)
+	bAuth, err := c.getBookingById(cAuth, bookingId)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get booking failed: %v", err)
 	}
 	log.Printf("Booking retrieved successfully, Trip ID: %s.\n", bAuth.TripId)
 
 	log.Println("Create basket.")
-	basketId, err := client.createBasket(bAuth)
+	basketId, err := c.createBasket(bAuth)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("basket creation failed: %v", err)
 	}
 	log.Printf("Basket created successfully, Basket ID: %s.\n", basketId)
 
 	log.Println("Get seats.")
-	seats, err := client.getSeatsQuery(basketId)
+	seats, err := c.getSeatsQuery(basketId)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get seats failed: %v", err)
 	}
@@ -284,7 +279,7 @@ func queryRyanair(email string, password string) (int, int, int, error) {
 	log.Printf("Number of occupied seats: %v\n", len(seats.UnavailableSeats))
 
 	log.Println("Get number of rows in the plane.")
-	rows, err := client.getNumberOfRows(seats.EquipmentModel)
+	rows, err := c.getNumberOfRows(seats.EquipmentModel)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get number of rows in the plane failed: %v", err)
 	}
