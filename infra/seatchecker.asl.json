@@ -1,0 +1,70 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "seatchecker",
+  "States": {
+    "seatchecker": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "arn:aws:lambda:eu-central-1:666914038100:function:seatchecker:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "verify_output"
+    },
+    "verify_output": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.status",
+            "NumericEquals": 200
+          },
+          "Next": "Fail"
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.window",
+              "NumericEquals": 0
+            },
+            {
+              "Variable": "$.middle",
+              "NumericEquals": 0
+            },
+            {
+              "Variable": "$.aisle",
+              "NumericEquals": 0
+            }
+          ],
+          "Next": "Success"
+        }
+      ],
+      "Default": "Wait"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 600,
+      "Next": "seatchecker"
+    },
+    "Fail": {
+      "Type": "Fail"
+    },
+    "Success": {
+      "Type": "Succeed"
+    }
+  }
+}
