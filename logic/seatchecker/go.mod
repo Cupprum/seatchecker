@@ -5,6 +5,7 @@ go 1.21.6
 require go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.28.0
 
 require (
+	github.com/aws/aws-lambda-go v1.47.0
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
