@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 type Event struct {
@@ -37,8 +38,8 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	w, m, a, err := rc.queryRyanair(e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
-		log.Fatalf("Error: %v\n", err)
-		return Event{Status: 500, Message: err.Error()}, err
+		log.Printf("Error: %v\n", err)
+		return Event{Status: 500, Message: err.Error()}, nil
 	}
 	log.Println("Seats from Ryanair retrieved successfully.")
 
@@ -53,8 +54,8 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		err := nc.sendNotification(context.Background(), e.NtfyTopic, cTxt)
 		if err != nil {
 			err = fmt.Errorf("failed to send notification, error: %v", err)
-			log.Fatalf("Error: %v\n", err)
-			return Event{Status: 500, Message: err.Error()}, err
+			log.Printf("Error: %v\n", err)
+			return Event{Status: 500, Message: err.Error()}, nil
 		}
 		log.Println("Notification sent successfully.")
 	}
@@ -75,20 +76,20 @@ func main() {
 	// TODO: try to simplify OTEL through ADOT.
 	cleanup, err := setupOtel(ctx)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	defer cleanup()
 
-	// lambda.Start(handler)
-	i := Event{
-		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
-		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
-		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-		Window:          99,
-		Middle:          99,
-		Aisle:           99,
-	}
-	resp, _ := handler(ctx, i)
-	log.Println(resp)
+	lambda.Start(handler)
+	// i := Event{
+	// 	RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+	// 	RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+	// 	NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+	// 	Window:          99,
+	// 	Middle:          99,
+	// 	Aisle:           99,
+	// }
+	// resp, _ := handler(ctx, i)
+	// log.Println(resp)
 
 }
