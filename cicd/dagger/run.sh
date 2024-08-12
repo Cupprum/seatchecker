@@ -9,7 +9,7 @@ dagger call apply \
     --secret_key="env:SEATCHECKER_AWS_SECRET_ACCESS_KEY" \
     --honeycomb_api_key="env:SEATCHECKER_HONEYCOMB_API_KEY"
 
-# # Destroy Infra
+# Destroy Infra
 # dagger call destroy \
 #     --seatchecker="../../logic/seatchecker" \
 #     --notifier="../../logic/notifier" \

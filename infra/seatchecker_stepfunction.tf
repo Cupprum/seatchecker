@@ -4,6 +4,7 @@ module "step-functions" {
   definition  = templatefile("./seatchecker.asl.json", {})
   name        = "seatchecker_stepfunction"
   create_role = true
+  trusted_entities = ["apigateway.amazonaws.com"] // TODO: verify if this should be present here, but there is a high change that maybe yes
   service_integrations = { # will automatically create policies to attach to the role 
     lambda = {
       lambda = [
