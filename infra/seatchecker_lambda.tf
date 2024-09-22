@@ -1,29 +1,18 @@
-data "aws_iam_policy_document" "assume_role" {
+data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
     effect = "Allow"
-
     principals {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
     }
-
     actions = ["sts:AssumeRole"]
   }
 }
 
-resource "aws_iam_role" "iam_for_lambda" {
-  name               = "iam_for_lambda"
-  assume_role_policy = data.aws_iam_policy_document.assume_role.json
-}
-
-data "aws_iam_policy" "lambda_basic_execution_policy" {
-  arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-// TODO: why the hell is this called lambda_flow_log_cloudwatch?
-resource "aws_iam_role_policy_attachment" "lambda_flow_log_cloudwatch" {
-  role       = aws_iam_role.iam_for_lambda.name
-  policy_arn = data.aws_iam_policy.lambda_basic_execution_policy.arn
+resource "aws_iam_role" "seatchecker_lambda_role" {
+  name               = "seatchecker_lambda_role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+  managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
 }
 
 data "archive_file" "lambda_seatchecker_zip" {
@@ -34,13 +23,12 @@ data "archive_file" "lambda_seatchecker_zip" {
 
 resource "aws_lambda_function" "seatchecker" {
   function_name    = "seatchecker"
-  role             = aws_iam_role.iam_for_lambda.arn
+  role             = aws_iam_role.seatchecker_lambda_role.arn
   filename         = data.archive_file.lambda_seatchecker_zip.output_path
   source_code_hash = data.archive_file.lambda_seatchecker_zip.output_base64sha256
   architectures    = ["arm64"]
   runtime          = "provided.al2023"
   handler          = "bootstrap"
-
 
   environment {
     variables = {

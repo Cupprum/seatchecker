@@ -9,12 +9,12 @@ data "aws_iam_policy_document" "apigw_assume_role" {
   }
 }
 
-resource "aws_iam_role" "iam_for_apigw" {
-  name               = "iam_for_apigw"
+resource "aws_iam_role" "seatchecker_apigw_role" {
+  name               = "seatchecker_apigw_role"
   assume_role_policy = data.aws_iam_policy_document.apigw_assume_role.json
 }
 
-resource "aws_iam_policy" "iam_for_apigw" {
+resource "aws_iam_policy" "seatchecker_apigw_role" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -27,19 +27,19 @@ resource "aws_iam_policy" "iam_for_apigw" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "iam_for_apigw" {
+resource "aws_iam_role_policy_attachment" "seatchecker_apigw_role" {
   role       = aws_iam_role.iam_for_apigw.name
   policy_arn = aws_iam_policy.iam_for_apigw.arn
 }
 
 
-resource "aws_apigatewayv2_api" "seatchecker" {
+resource "aws_apigatewayv2_api" "seatchecker_api" {
   name          = "seatchecker_api"
   protocol_type = "HTTP"
 }
 
 resource "aws_apigatewayv2_integration" "trigger_step_function" {
-  api_id                 = aws_apigatewayv2_api.seatchecker.id
+  api_id                 = aws_apigatewayv2_api.seatchecker_api.id
   description            = "Invoke Step Functions"
   integration_type       = "AWS_PROXY"
   integration_subtype    = "StepFunctions-StartExecution"
@@ -52,13 +52,13 @@ resource "aws_apigatewayv2_integration" "trigger_step_function" {
 }
 
 resource "aws_apigatewayv2_route" "trigger_step_function" {
-  api_id    = aws_apigatewayv2_api.seatchecker.id
-  route_key = "POST /test"
+  api_id    = aws_apigatewayv2_api.seatchecker_api.id
+  route_key = "POST /start"
   target    = "integrations/${aws_apigatewayv2_integration.trigger_step_function.id}"
 }
 
 resource "aws_apigatewayv2_stage" "deployment" {
-  api_id      = aws_apigatewayv2_api.seatchecker.id
+  api_id      = aws_apigatewayv2_api.seatchecker_api.id
   name        = "$default"
   auto_deploy = true
 }
