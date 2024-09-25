@@ -28,8 +28,8 @@ resource "aws_iam_policy" "seatchecker_apigw_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "seatchecker_apigw_role" {
-  role       = aws_iam_role.iam_for_apigw.name
-  policy_arn = aws_iam_policy.iam_for_apigw.arn
+  role       = aws_iam_role.seatchecker_apigw_role.name
+  policy_arn = aws_iam_policy.seatchecker_apigw_role.arn
 }
 
 
@@ -43,7 +43,7 @@ resource "aws_apigatewayv2_integration" "trigger_step_function" {
   description            = "Invoke Step Functions"
   integration_type       = "AWS_PROXY"
   integration_subtype    = "StepFunctions-StartExecution"
-  credentials_arn        = aws_iam_role.iam_for_apigw.arn
+  credentials_arn        = aws_iam_role.seatchecker_apigw_role.arn
   payload_format_version = "1.0"
   request_parameters = {
     "StateMachineArn" = module.step-functions.state_machine_arn
