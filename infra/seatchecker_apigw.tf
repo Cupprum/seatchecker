@@ -23,6 +23,11 @@ resource "aws_iam_policy" "seatchecker_apigw_role" {
         Effect   = "Allow"
         Resource = module.step-functions.state_machine_arn
       },
+      {
+        Action   = ["states:StopExecution"]
+        Effect   = "Allow"
+        Resource = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:execution:${module.step-functions.state_machine_name}:*"
+      }
     ]
   })
 }
