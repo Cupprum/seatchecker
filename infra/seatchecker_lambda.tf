@@ -10,8 +10,8 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 }
 
 resource "aws_iam_role" "seatchecker_lambda_role" {
-  name               = "seatchecker_lambda_role"
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+  name                = "seatchecker_lambda_role"
+  assume_role_policy  = data.aws_iam_policy_document.lambda_assume_role.json
   managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
 }
 
@@ -29,6 +29,7 @@ resource "aws_lambda_function" "seatchecker" {
   architectures    = ["arm64"]
   runtime          = "provided.al2023"
   handler          = "bootstrap"
+  timeout          = 10
 
   environment {
     variables = {
