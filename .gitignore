@@ -5,3 +5,6 @@
 # MacOS
 .DS_Store
 .env
+
+# Python
+venv
