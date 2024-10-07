@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 )
 
@@ -12,7 +11,7 @@ type Notification struct {
 	Tags    []string `json:"tags"`
 }
 
-func (c Client) sendNotification(ctx context.Context, topic string, text string) error {
+func (c Client) sendNotification(topic string, text string) error {
 	// _, span := tr.Start(ctx, "send notification")
 	// defer span.End()
 

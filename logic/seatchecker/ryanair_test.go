@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func TestAccountLogin(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 	cARes, err := c.accountLogin(e, p)
 	if err != nil {
 		t.Fatalf("failed to get account login: %v", err)
@@ -80,7 +81,7 @@ func TestGetBookingId(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 	rId, err := c.getBookingId(cAReq)
 	if err != nil {
 		t.Fatalf("failed to get booking id: %v", err)
@@ -112,7 +113,7 @@ func TestGetBookingById(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 	cAReq := CAuth{"customerid", "token"}
 	bA, err := c.getBookingById(cAReq, "booking_id")
 	if err != nil {
@@ -150,7 +151,7 @@ func TestCreateBasket(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 
 	bId, err := c.createBasket(bA)
 	if err != nil {
@@ -186,7 +187,7 @@ func TestGetSeatsQuery(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 
 	qs, err := c.getSeatsQuery(bId)
 	if err != nil {
@@ -217,7 +218,7 @@ func TestGetNumberOfRows(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{scheme: "http", fqdn: ts.URL}
+	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
 
 	rrows, err := c.getNumberOfRows(m)
 	if err != nil {

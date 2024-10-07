@@ -2,19 +2,26 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Client struct {
+	ctx    context.Context
 	scheme string
 	fqdn   string
 }
 
 type Request struct {
+	ctx         context.Context
 	method      string
 	scheme      string
 	fqdn        string
@@ -42,7 +49,8 @@ func (r Request) creator() (*http.Request, error) {
 	}
 
 	// TODO: add context to the request creation.
-	req, err := http.NewRequest(r.method, u.String(), bytes.NewBuffer(buf))
+	req, err := http.NewRequestWithContext(r.ctx, r.method, u.String(), bytes.NewBuffer(buf))
+	// req, err := http.NewRequest(r.method, u.String(), bytes.NewBuffer(buf))
 	if err != nil {
 		return nil, fmt.Errorf("failed to form request: %v", err)
 	}
@@ -63,7 +71,15 @@ func httpsRequest[T any](req Request) (T, error) {
 		return nilT, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	c := &http.Client{}
+	c := &http.Client{
+		Transport: otelhttp.NewTransport(
+			http.DefaultTransport,
+			otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+				return otelhttptrace.NewClientTrace(ctx)
+			}),
+		),
+	}
+
 	res, err := c.Do(r)
 	if err != nil {
 		return nilT, fmt.Errorf("failed to execute request: %v", err)
@@ -89,6 +105,7 @@ func httpsRequest[T any](req Request) (T, error) {
 
 func httpsRequestGet[T any](c Client, path string, queryParams url.Values, headers http.Header) (T, error) {
 	r := Request{
+		c.ctx,
 		"GET",
 		c.scheme,
 		c.fqdn,
@@ -102,6 +119,7 @@ func httpsRequestGet[T any](c Client, path string, queryParams url.Values, heade
 
 func httpsRequestPost[T any](c Client, path string, body any) (T, error) {
 	r := Request{
+		c.ctx,
 		"POST",
 		c.scheme,
 		c.fqdn,

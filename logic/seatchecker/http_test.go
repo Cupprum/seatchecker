@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ func TestRequestCreator(t *testing.T) {
 	}
 
 	r := Request{
+		ctx:         context.Background(),
 		method:      "GET",
 		scheme:      "http",
 		fqdn:        "test",
@@ -79,6 +81,7 @@ func TestHttpsRequest(t *testing.T) {
 	defer ts.Close()
 
 	r := Request{
+		context.Background(),
 		"POST",
 		"http",
 		ts.URL,

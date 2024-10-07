@@ -3,7 +3,6 @@
 # Create Infra
 dagger call apply \
     --seatchecker="../../logic/seatchecker" \
-    --notifier="../../logic/notifier" \
     --infra="../../infra" \
     --access_key="env:SEATCHECKER_AWS_ACCESS_KEY_ID" \
     --secret_key="env:SEATCHECKER_AWS_SECRET_ACCESS_KEY" \
@@ -12,7 +11,6 @@ dagger call apply \
 # Destroy Infra
 # dagger call destroy \
 #     --seatchecker="../../logic/seatchecker" \
-#     --notifier="../../logic/notifier" \
 #     --infra="../../infra" \
 #     --access_key="env:SEATCHECKER_AWS_ACCESS_KEY_ID" \
 #     --secret_key="env:SEATCHECKER_AWS_SECRET_ACCESS_KEY"

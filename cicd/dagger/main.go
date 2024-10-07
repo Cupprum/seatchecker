@@ -71,8 +71,6 @@ func (m *Cicd) Apply(
 	ctx context.Context,
 	// Directory containing the seatchecker lambda source code.
 	seatchecker *Directory,
-	// Directory containing the notifier lambda source code.
-	notifier *Directory,
 	// Directory containing the infrastructure.
 	infra *Directory,
 	// AWS Access Key ID.
@@ -84,12 +82,10 @@ func (m *Cicd) Apply(
 ) (string, error) {
 	// Logic.
 	sc := PackageGoLambda(seatchecker, "seatchecker")
-	nt := PackageGoLambda(notifier, "notifier")
 
 	// Infra with basic configuration.
 	tf := TerraformContainer(infra, access_key, secret_key).
 		WithDirectory("/out/seatchecker", sc).
-		WithDirectory("/out/notifier", nt).
 		WithSecretVariable("TF_VAR_honeycomb_api_key", honeycomb_api_key)
 
 	// Ensure that Terraform apply operation is never cached.
@@ -105,8 +101,6 @@ func (m *Cicd) Destroy(
 	ctx context.Context,
 	// Directory containing the seatchecker lambda source code.
 	seatchecker *Directory,
-	// Directory containing the notifier lambda source code.
-	notifier *Directory,
 	// Directory containing the infrastructure.
 	infra *Directory,
 	// AWS Access Key ID.
@@ -115,11 +109,9 @@ func (m *Cicd) Destroy(
 	secret_key *Secret,
 ) (string, error) {
 	sc := PackageGoLambda(seatchecker, "seatchecker")
-	nt := PackageGoLambda(notifier, "notifier")
 
 	tf := TerraformContainer(infra, access_key, secret_key).
-		WithDirectory("/out/seatchecker", sc).
-		WithDirectory("/out/notifier", nt)
+		WithDirectory("/out/seatchecker", sc)
 	tf = tf.WithExec([]string{"destroy", "-auto-approve"})
 
 	return tf.Stdout(ctx)
