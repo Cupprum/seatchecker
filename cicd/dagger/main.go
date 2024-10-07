@@ -58,8 +58,8 @@ func TerraformContainer(infra *Directory, ak *Secret, sk *Secret) *Container {
 		WithEnvVariable("AWS_REGION", "eu-central-1")
 	// Configure cache for Terraform plugins.
 	base = base.
-		WithEnvVariable("TF_PLUGIN_CACHE_DIR", "/infra/.terraform.d/plugins").
-		WithMountedCache("/infra/.terraform.d/plugins", dag.CacheVolume("tf-plugin-cache"))
+		WithEnvVariable("TF_PLUGIN_CACHE_DIR", "/opt/terraform-plugin-dir").
+		WithMountedCache("/opt/terraform-plugin-dir", dag.CacheVolume("tf-plugin-cache"))
 	base = base.
 		WithExec([]string{"init"})
 
