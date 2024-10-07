@@ -85,3 +85,7 @@ resource "aws_apigatewayv2_stage" "deployment" {
   name        = "$default"
   auto_deploy = true
 }
+
+output "api_url" {
+  value = aws_apigatewayv2_api.seatchecker_api.api_endpoint
+}
