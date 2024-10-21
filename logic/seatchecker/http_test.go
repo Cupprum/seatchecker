@@ -91,7 +91,6 @@ func TestHttpsRequest(t *testing.T) {
 		nil,
 	}
 	rca, _ := httpsRequest[CAuth](r)
-	fmt.Println(rca)
 
 	if !reflect.DeepEqual(ca, rca) {
 		t.Fatalf("returned struct is incorrect, expected: %v, received: %v\n", ca, rca)
