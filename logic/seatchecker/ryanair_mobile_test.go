@@ -33,8 +33,8 @@ func TestAccountLogin(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
-	cARes, err := c.accountLogin(e, p)
+	c := Client{scheme: "http", fqdn: ts.URL}
+	cARes, err := c.accountLogin(context.TODO(), e, p)
 	if err != nil {
 		t.Fatalf("failed to get account login: %v", err)
 	}

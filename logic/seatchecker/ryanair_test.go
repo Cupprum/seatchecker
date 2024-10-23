@@ -48,8 +48,8 @@ func TestGetBookingId(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
-	rId, err := c.getBookingId(cAReq)
+	c := Client{scheme: "http", fqdn: ts.URL}
+	rId, err := c.getBookingId(context.TODO(), cAReq)
 	if err != nil {
 		t.Fatalf("failed to get booking id: %v", err)
 	}
@@ -80,9 +80,9 @@ func TestGetBookingById(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 	cAReq := RAuth{"customerid", "token"}
-	bA, err := c.getBookingById(cAReq, "booking_id")
+	bA, err := c.getBookingById(context.TODO(), cAReq, "booking_id")
 	if err != nil {
 		t.Fatalf("failed to get booking: %v", err)
 	}
@@ -118,9 +118,9 @@ func TestCreateBasket(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
-	bId, err := c.createBasket(bA)
+	bId, err := c.createBasket(context.TODO(), bA)
 	if err != nil {
 		t.Fatalf("failed to create basket: %v", err)
 	}
@@ -154,9 +154,9 @@ func TestGetSeatsQuery(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
-	qs, err := c.getSeatsQuery(bId)
+	qs, err := c.getSeatsQuery(context.TODO(), bId)
 	if err != nil {
 		t.Fatalf("failed to query seats: %v", err)
 	}
@@ -185,9 +185,9 @@ func TestGetNumberOfRows(t *testing.T) {
 	defer ts.Close()
 
 	// Check received response
-	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
+	c := Client{scheme: "http", fqdn: ts.URL}
 
-	rrows, err := c.getNumberOfRows(m)
+	rrows, err := c.getNumberOfRows(context.TODO(), m)
 	if err != nil {
 		t.Fatalf("failed to get number of rows: %v\n", err)
 	}

@@ -15,12 +15,12 @@ import (
 var tr trace.Tracer
 var tp *sdktrace.TracerProvider
 
-func setupOtel(ctx context.Context) (func(), error) {
+func setupOtel(ctx context.Context) func() {
 	// Configure a new OTLP exporter using environment variables for sending data to Honeycomb over gRPC
 	client := otlptracegrpc.NewClient()
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
-		return func() {}, fmt.Errorf("failed to initialize exporter: %e", err)
+		return func() {}
 	}
 
 	detector := lambdadetector.NewResourceDetector()
@@ -44,5 +44,5 @@ func setupOtel(ctx context.Context) (func(), error) {
 	return func() {
 		_ = exp.Shutdown(ctx)
 		_ = tp.Shutdown(ctx)
-	}, nil
+	}
 }

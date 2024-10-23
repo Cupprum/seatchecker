@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Notification struct {
@@ -11,9 +15,9 @@ type Notification struct {
 	Tags    []string `json:"tags"`
 }
 
-func (c Client) sendNotification(topic string, text string) error {
-	// _, span := tr.Start(ctx, "send notification")
-	// defer span.End()
+func (c Client) sendNotification(ctx context.Context, topic string, text string) error {
+	ctx, span := tr.Start(ctx, "notifier_send_notification")
+	defer span.End()
 
 	b := Notification{
 		Topic:   topic,
@@ -22,10 +26,14 @@ func (c Client) sendNotification(topic string, text string) error {
 		Tags:    []string{"airplane"},
 	}
 
-	_, err := httpsRequestPost[any](c, "/", b)
+	_, err := httpsRequestPost[any](ctx, c, "/", b)
 	if err != nil {
-		return fmt.Errorf("failed to send notification: %v", err)
+		err = fmt.Errorf("failed to send notification: %v", err)
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err, trace.WithStackTrace(true))
+		return err
 	}
+	span.AddEvent("notification sent")
 
 	return nil
 }

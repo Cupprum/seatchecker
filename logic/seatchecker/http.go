@@ -15,7 +15,6 @@ import (
 )
 
 type Client struct {
-	ctx    context.Context
 	scheme string
 	fqdn   string
 }
@@ -103,9 +102,9 @@ func httpsRequest[T any](req Request) (T, error) {
 	return t, nil
 }
 
-func httpsRequestGet[T any](c Client, path string, queryParams url.Values, headers http.Header) (T, error) {
+func httpsRequestGet[T any](ctx context.Context, c Client, path string, queryParams url.Values, headers http.Header) (T, error) {
 	r := Request{
-		c.ctx,
+		ctx,
 		"GET",
 		c.scheme,
 		c.fqdn,
@@ -117,9 +116,9 @@ func httpsRequestGet[T any](c Client, path string, queryParams url.Values, heade
 	return httpsRequest[T](r)
 }
 
-func httpsRequestPost[T any](c Client, path string, body any) (T, error) {
+func httpsRequestPost[T any](ctx context.Context, c Client, path string, body any) (T, error) {
 	r := Request{
-		c.ctx,
+		ctx,
 		"POST",
 		c.scheme,
 		c.fqdn,

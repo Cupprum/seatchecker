@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-
-	"github.com/aws/aws-lambda-go/lambda"
+	"os"
 )
 
 type Event struct {
@@ -32,9 +31,10 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	log.Printf("Received Event: %v\n", e)
 
 	// Ryanair Mobile API.
+	rmc := Client{scheme: "https", fqdn: "services-api.ryanair.com"}
+
 	log.Printf("Start Ryanair account login for user: %s.\n", e.RyanairEmail)
-	rmc := Client{ctx: ctx, scheme: "https", fqdn: "services-api.ryanair.com"}
-	cAuth, err := rmc.accountLogin(e.RyanairEmail, e.RyanairPassword)
+	cAuth, err := rmc.accountLogin(ctx, e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
 		err = fmt.Errorf("login failed: %v", err)
 		log.Printf("Error: %v\n", err)
@@ -43,9 +43,10 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	log.Println("Account login finished successfully.")
 
 	// Ryanair Browser API.
+	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
+
 	log.Println("Query Ryanair for seats.")
-	rc := Client{ctx: ctx, scheme: "https", fqdn: "www.ryanair.com"}
-	w, m, a, err := rc.queryRyanair(cAuth)
+	w, m, a, err := rc.queryRyanair(ctx, cAuth)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Printf("Error: %v\n", err)
@@ -59,9 +60,10 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	log.Printf("Current execution: %v", cTxt)
 
 	if pTxt != cTxt {
+		nc := Client{scheme: "https", fqdn: "ntfy.sh"}
+
 		log.Println("Send notification.")
-		nc := Client{ctx: ctx, scheme: "https", fqdn: "ntfy.sh"}
-		err := nc.sendNotification(e.NtfyTopic, cTxt)
+		err := nc.sendNotification(ctx, e.NtfyTopic, cTxt)
 		if err != nil {
 			err = fmt.Errorf("failed to send notification, error: %v", err)
 			log.Printf("Error: %v\n", err)
@@ -84,22 +86,17 @@ func main() {
 	ctx := context.Background()
 
 	// TODO: try to simplify OTEL through ADOT.
-	cleanup, err := setupOtel(ctx)
-	if err != nil {
-		log.Println(err)
+	defer setupOtel(ctx)()
+
+	// lambda.Start(handler)
+	i := Event{
+		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+		Window:          99,
+		Middle:          99,
+		Aisle:           99,
 	}
-	defer cleanup()
-
-	lambda.Start(handler)
-	// i := Event{
-	// 	RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
-	// 	RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
-	// 	NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-	// 	Window:          99,
-	// 	Middle:          99,
-	// 	Aisle:           99,
-	// }
-	// resp, _ := handler(ctx, i)
-	// log.Println(resp)
-
+	resp, _ := handler(ctx, i)
+	log.Println(resp)
 }

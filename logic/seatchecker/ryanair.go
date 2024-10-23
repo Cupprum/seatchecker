@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,7 +18,10 @@ type BIdResp struct {
 	Items []BIdItem `json:"items"`
 }
 
-func (c Client) getBookingId(a RAuth) (string, error) {
+func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
+	// ctx, span := tr.Start(ctx, "get_booking_id")
+	// defer span.End()
+
 	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create path: %v", err)
@@ -31,7 +35,7 @@ func (c Client) getBookingId(a RAuth) (string, error) {
 		"X-Auth-Token": {a.Token},
 	}
 
-	r, err := httpsRequestGet[BIdResp](c, p, q, h)
+	r, err := httpsRequestGet[BIdResp](ctx, c, p, q, h)
 	if err != nil {
 		return "", fmt.Errorf("failed to get orders: %v", err)
 	}
@@ -69,7 +73,10 @@ type BBIdData struct {
 	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 }
 
-func (c Client) getBookingById(a RAuth, bookingId string) (BAuth, error) {
+func (c Client) getBookingById(ctx context.Context, a RAuth, bookingId string) (BAuth, error) {
+	// ctx, span := tr.Start(ctx, "get_booking_by_id")
+	// defer span.End()
+
 	p := "api/bookingfa/en-gb/graphql"
 
 	q := `
@@ -86,7 +93,7 @@ func (c Client) getBookingById(a RAuth, bookingId string) (BAuth, error) {
 	}
 	b := GqlQuery[BBIdVars]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[BBIdData]](c, p, b)
+	r, err := httpsRequestPost[GqlResponse[BBIdData]](ctx, c, p, b)
 	if err != nil {
 		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
 	}
@@ -102,7 +109,10 @@ type BData struct {
 	Basket BBasket `json:"createBasketForActiveTrip"`
 }
 
-func (c Client) createBasket(a BAuth) (string, error) {
+func (c Client) createBasket(ctx context.Context, a BAuth) (string, error) {
+	// ctx, span := tr.Start(ctx, "create_basket")
+	// defer span.End()
+
 	p := "api/basketapi/en-gb/graphql"
 
 	q := `
@@ -117,7 +127,7 @@ func (c Client) createBasket(a BAuth) (string, error) {
 	`
 	b := GqlQuery[BAuth]{Query: q, Variables: a}
 
-	r, err := httpsRequestPost[GqlResponse[BData]](c, p, b)
+	r, err := httpsRequestPost[GqlResponse[BData]](ctx, c, p, b)
 	if err != nil {
 		return "", fmt.Errorf("failed to create basket: %v", err)
 	}
@@ -138,7 +148,10 @@ type SQData struct {
 	Seats []SQSeats `json:"seats"`
 }
 
-func (c Client) getSeatsQuery(basketId string) (SQSeats, error) {
+func (c Client) getSeatsQuery(ctx context.Context, basketId string) (SQSeats, error) {
+	// ctx, span := tr.Start(ctx, "get_seats_query")
+	// defer span.End()
+
 	p := "api/catalogapi/en-gb/graphql"
 
 	q := `
@@ -157,7 +170,7 @@ func (c Client) getSeatsQuery(basketId string) (SQSeats, error) {
 	}
 	b := GqlQuery[SQBasket]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[SQData]](c, p, b)
+	r, err := httpsRequestPost[GqlResponse[SQData]](ctx, c, p, b)
 	if err != nil {
 		return SQSeats{}, fmt.Errorf("failed to get seats: %v", err)
 	}
@@ -176,13 +189,16 @@ type Equipment struct {
 	SeatRows [][]Seat `json:"seatRows"`
 }
 
-func (c Client) getNumberOfRows(model string) (int, error) {
+func (c Client) getNumberOfRows(ctx context.Context, model string) (int, error) {
+	// ctx, span := tr.Start(ctx, "get_number_of_rows")
+	// defer span.End()
+
 	p := "api/booking/v5/en-ie/res/seatmap"
 
 	q := url.Values{}
 	q.Add("aircraftModel", model)
 
-	e, err := httpsRequestGet[[]Equipment](c, p, q, nil)
+	e, err := httpsRequestGet[[]Equipment](ctx, c, p, q, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get seatmap: %v", err)
 	}
@@ -215,30 +231,33 @@ func calculateEmptySeats(rows int, seats []string) (int, int, int) {
 }
 
 // TODO: update return values to something more normal
-func (c Client) queryRyanair(cAuth RAuth) (int, int, int, error) {
+func (c Client) queryRyanair(ctx context.Context, cAuth RAuth) (int, int, int, error) {
+	// ctx, span := tr.Start(ctx, "query_ryanair")
+	// defer span.End()
+
 	log.Println("Get closest Booking ID.")
-	bookingId, err := c.getBookingId(cAuth)
+	bookingId, err := c.getBookingId(ctx, cAuth)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get booking ID failed: %v", err)
 	}
 	log.Printf("Booking ID retrieved successfully: %s.\n", bookingId)
 
 	log.Printf("Get Booking with ID: %s.\n", bookingId)
-	bAuth, err := c.getBookingById(cAuth, bookingId)
+	bAuth, err := c.getBookingById(ctx, cAuth, bookingId)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get booking failed: %v", err)
 	}
 	log.Printf("Booking retrieved successfully, Trip ID: %s.\n", bAuth.TripId)
 
 	log.Println("Create basket.")
-	basketId, err := c.createBasket(bAuth)
+	basketId, err := c.createBasket(ctx, bAuth)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("basket creation failed: %v", err)
 	}
 	log.Printf("Basket created successfully, Basket ID: %s.\n", basketId)
 
 	log.Println("Get seats.")
-	seats, err := c.getSeatsQuery(basketId)
+	seats, err := c.getSeatsQuery(ctx, basketId)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get seats failed: %v", err)
 	}
@@ -247,7 +266,7 @@ func (c Client) queryRyanair(cAuth RAuth) (int, int, int, error) {
 	log.Printf("Number of occupied seats: %v\n", len(seats.UnavailableSeats))
 
 	log.Println("Get number of rows in the plane.")
-	rows, err := c.getNumberOfRows(seats.EquipmentModel)
+	rows, err := c.getNumberOfRows(ctx, seats.EquipmentModel)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("get number of rows in the plane failed: %v", err)
 	}

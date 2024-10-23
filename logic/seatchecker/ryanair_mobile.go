@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type RAuth struct {
@@ -9,7 +13,10 @@ type RAuth struct {
 	Token      string `json:"token"`
 }
 
-func (c Client) accountLogin(email string, password string) (RAuth, error) {
+func (c Client) accountLogin(ctx context.Context, email string, password string) (RAuth, error) {
+	ctx, span := tr.Start(ctx, "ryanair_account_login")
+	defer span.End()
+
 	p := "usrprof/v2/accountLogin"
 
 	b := struct {
@@ -20,9 +27,12 @@ func (c Client) accountLogin(email string, password string) (RAuth, error) {
 		password,
 	}
 
-	a, err := httpsRequestPost[RAuth](c, p, b)
+	a, err := httpsRequestPost[RAuth](ctx, c, p, b)
 	if err != nil {
-		return RAuth{}, fmt.Errorf("failed to get account login: %v", err)
+		err = fmt.Errorf("failed to get account login: %v", err)
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err, trace.WithStackTrace(true))
+		return RAuth{}, err
 	}
 
 	return a, nil
