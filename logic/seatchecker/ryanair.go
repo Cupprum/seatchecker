@@ -13,7 +13,7 @@ type CAuth struct {
 }
 
 func (c Client) accountLogin(email string, password string) (CAuth, error) {
-	p := "api/usrprof/v2/accountLogin"
+	p := "usrprof/v2/accountLogin"
 
 	b := struct {
 		Email    string `json:"email"`
@@ -240,14 +240,7 @@ func calculateEmptySeats(rows int, seats []string) (int, int, int) {
 }
 
 // TODO: update return values to something more normal
-func (c Client) queryRyanair(email string, password string) (int, int, int, error) {
-	log.Printf("Start account login for user: %s.\n", email)
-	cAuth, err := c.accountLogin(email, password)
-	if err != nil {
-		return 0, 0, 0, fmt.Errorf("login failed: %v", err)
-	}
-	log.Println("Account login finished successfully.")
-
+func (c Client) queryRyanair(cAuth CAuth) (int, int, int, error) {
 	log.Println("Get closest Booking ID.")
 	bookingId, err := c.getBookingId(cAuth)
 	if err != nil {
