@@ -11,7 +11,7 @@ import (
 )
 
 func TestSendNotification(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	defer setupOtel(ctx)()
 
 	eTopic := "test_topic"

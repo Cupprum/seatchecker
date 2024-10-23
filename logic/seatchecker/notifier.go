@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -18,6 +19,7 @@ type Notification struct {
 func (c Client) sendNotification(ctx context.Context, topic string, text string) error {
 	ctx, span := tr.Start(ctx, "notifier_send_notification")
 	defer span.End()
+	span.SetAttributes(attribute.String("topic", topic), attribute.String("text", text))
 
 	b := Notification{
 		Topic:   topic,
