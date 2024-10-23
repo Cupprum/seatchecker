@@ -47,9 +47,7 @@ func (r Request) creator() (*http.Request, error) {
 		}
 	}
 
-	// TODO: add context to the request creation.
 	req, err := http.NewRequestWithContext(r.ctx, r.method, u.String(), bytes.NewBuffer(buf))
-	// req, err := http.NewRequest(r.method, u.String(), bytes.NewBuffer(buf))
 	if err != nil {
 		return nil, fmt.Errorf("failed to form request: %v", err)
 	}
