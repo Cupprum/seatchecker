@@ -17,7 +17,7 @@ type BIdResp struct {
 	Items []BIdItem `json:"items"`
 }
 
-func (c Client) getBookingId(a CAuth) (string, error) {
+func (c Client) getBookingId(a RAuth) (string, error) {
 	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create path: %v", err)
@@ -69,7 +69,7 @@ type BBIdData struct {
 	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 }
 
-func (c Client) getBookingById(a CAuth, bookingId string) (BAuth, error) {
+func (c Client) getBookingById(a RAuth, bookingId string) (BAuth, error) {
 	p := "api/bookingfa/en-gb/graphql"
 
 	q := `
@@ -215,7 +215,7 @@ func calculateEmptySeats(rows int, seats []string) (int, int, int) {
 }
 
 // TODO: update return values to something more normal
-func (c Client) queryRyanair(cAuth CAuth) (int, int, int, error) {
+func (c Client) queryRyanair(cAuth RAuth) (int, int, int, error) {
 	log.Println("Get closest Booking ID.")
 	bookingId, err := c.getBookingId(cAuth)
 	if err != nil {

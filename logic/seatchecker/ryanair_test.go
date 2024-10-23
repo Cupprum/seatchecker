@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetBookingId(t *testing.T) {
-	cAReq := CAuth{"customerid", "token"}
+	cAReq := RAuth{"customerid", "token"}
 	eId := "booking_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func TestGetBookingById(t *testing.T) {
 
 	// Check received response
 	c := Client{ctx: context.Background(), scheme: "http", fqdn: ts.URL}
-	cAReq := CAuth{"customerid", "token"}
+	cAReq := RAuth{"customerid", "token"}
 	bA, err := c.getBookingById(cAReq, "booking_id")
 	if err != nil {
 		t.Fatalf("failed to get booking: %v", err)
