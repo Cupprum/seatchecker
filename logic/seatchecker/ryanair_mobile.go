@@ -34,6 +34,7 @@ func (c Client) accountLogin(ctx context.Context, email string, password string)
 		span.RecordError(err, trace.WithStackTrace(true))
 		return RAuth{}, err
 	}
+	span.AddEvent("account login successful")
 
 	return a, nil
 }

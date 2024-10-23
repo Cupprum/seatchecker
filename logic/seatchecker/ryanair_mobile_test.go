@@ -11,8 +11,11 @@ import (
 )
 
 func TestAccountLogin(t *testing.T) {
+	ctx := context.Background()
+	defer setupOtel(ctx)()
+
 	e, p := "john@doe.com", "password"
-	cAReq := RAuth{"customerid", "token"}
+	rAReq := RAuth{"customerid", "token"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -27,18 +30,18 @@ func TestAccountLogin(t *testing.T) {
 		}
 
 		// Create fake response
-		res, _ := json.Marshal(cAReq)
+		res, _ := json.Marshal(rAReq)
 		fmt.Fprintln(w, string(res))
 	}))
 	defer ts.Close()
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	cARes, err := c.accountLogin(context.TODO(), e, p)
+	cARes, err := c.accountLogin(ctx, e, p)
 	if err != nil {
 		t.Fatalf("failed to get account login: %v", err)
 	}
-	if cAReq != cARes {
-		t.Fatalf("wrong response, expected: %v, received %v", cAReq, cARes)
+	if rAReq != cARes {
+		t.Fatalf("wrong response, expected: %v, received %v", rAReq, cARes)
 	}
 }
