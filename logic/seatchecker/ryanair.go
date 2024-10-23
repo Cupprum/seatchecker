@@ -23,7 +23,6 @@ func (c Client) accountLogin(email string, password string) (CAuth, error) {
 		password,
 	}
 
-	// TODO: empty login seems to be successful, how can this be...
 	a, err := httpsRequestPost[CAuth](c, p, b)
 	if err != nil {
 		return CAuth{}, fmt.Errorf("failed to get account login: %v", err)
