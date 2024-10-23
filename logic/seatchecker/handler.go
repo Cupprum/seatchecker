@@ -31,8 +31,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 
 	log.Printf("Received Event: %v\n", e)
 
-	// TODO: verify the input event
-
+	// Ryanair Mobile API.
 	log.Printf("Start Ryanair account login for user: %s.\n", e.RyanairEmail)
 	rmc := Client{ctx: ctx, scheme: "https", fqdn: "services-api.ryanair.com"}
 	cAuth, err := rmc.accountLogin(e.RyanairEmail, e.RyanairPassword)
@@ -43,6 +42,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	}
 	log.Println("Account login finished successfully.")
 
+	// Ryanair Browser API.
 	log.Println("Query Ryanair for seats.")
 	rc := Client{ctx: ctx, scheme: "https", fqdn: "www.ryanair.com"}
 	w, m, a, err := rc.queryRyanair(cAuth)
