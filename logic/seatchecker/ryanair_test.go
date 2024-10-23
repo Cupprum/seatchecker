@@ -200,11 +200,11 @@ func TestGetNumberOfRows(t *testing.T) {
 func TestCalculateEmptySeats(t *testing.T) {
 	r := 4
 
-	test := func(s []string, ew int, em int, ea int) {
-		w, m, a := calculateEmptySeats(r, s)
-		if w != ew || m != em || a != ea {
-			eTxt := generateText(ew, em, ea)
-			rTxt := generateText(w, m, a)
+	test := func(s []string, ess SeatState) {
+		rss := calculateEmptySeats(r, s)
+		if rss != ess {
+			eTxt := ess.generateText()
+			rTxt := rss.generateText()
 			t.Fatalf("wrong number of calculated empty seats, expected: %v, received: %v\n", eTxt, rTxt)
 		}
 	}
@@ -215,7 +215,7 @@ func TestCalculateEmptySeats(t *testing.T) {
 		"03A", "03B", "03C", "03D", "03E", "03F",
 		"04A", "04B", "04C", "04D", "04E", "04F",
 	}
-	test(fs, 0, 0, 0)
+	test(fs, SeatState{0, 0, 0})
 
 	ss := []string{
 		"01A", "01B", "01E",
@@ -223,11 +223,11 @@ func TestCalculateEmptySeats(t *testing.T) {
 		"03B", "03C", "03D", "03E", "03F",
 		"04A", "04B", "04C", "04D", "04E",
 	}
-	test(ss, 4, 0, 2)
+	test(ss, SeatState{4, 0, 2})
 
 	ns := []string{}
 	ms := r * 2
-	test(ns, ms, ms, ms)
+	test(ns, SeatState{ms, ms, ms})
 }
 
 func TestQueryRyanair(t *testing.T) {

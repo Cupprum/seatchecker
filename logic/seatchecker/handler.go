@@ -7,19 +7,23 @@ import (
 	"os"
 )
 
-type Event struct {
-	RyanairEmail    string `json:"ryanair_email"`
-	RyanairPassword string `json:"ryanair_password"`
-	NtfyTopic       string `json:"ntfy_topic"`
-	Window          int    `json:"window"`
-	Middle          int    `json:"middle"`
-	Aisle           int    `json:"aisle"`
-	Status          int    `json:"status"`
-	Message         string `json:"message"`
+type SeatState struct {
+	Window int `json:"window"`
+	Middle int `json:"middle"`
+	Aisle  int `json:"aisle"`
 }
 
-func generateText(w int, m int, a int) string {
-	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", w, m, a)
+type Event struct {
+	RyanairEmail    string    `json:"ryanair_email"`
+	RyanairPassword string    `json:"ryanair_password"`
+	NtfyTopic       string    `json:"ntfy_topic"`
+	SeatState       SeatState `json:"seat_state"`
+	Status          int       `json:"status"`
+	Message         string    `json:"message"`
+}
+
+func (ss SeatState) generateText() string {
+	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", ss.Window, ss.Middle, ss.Aisle)
 }
 
 func handler(ctx context.Context, e Event) (Event, error) {
@@ -46,7 +50,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
 
 	log.Println("Query Ryanair for seats.")
-	w, m, a, err := rc.queryRyanair(ctx, cAuth)
+	ss, err := rc.queryRyanair(ctx, cAuth)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Printf("Error: %v\n", err)
@@ -54,9 +58,10 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	}
 	log.Println("Seats from Ryanair retrieved successfully.")
 
-	pTxt := generateText(e.Window, e.Middle, e.Aisle)
-	cTxt := generateText(w, m, a)
+	pTxt := e.SeatState.generateText()
 	log.Printf("Previous execution: %v", pTxt)
+
+	cTxt := ss.generateText()
 	log.Printf("Current execution: %v", cTxt)
 
 	if pTxt != cTxt {
@@ -72,10 +77,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		log.Println("Notification sent successfully.")
 	}
 
-	// TODO: polish updating event and generating the message body
-	e.Window = w
-	e.Middle = m
-	e.Aisle = a
+	e.SeatState = ss
 	e.Status = 200
 
 	log.Println("Program finished successfully.")
@@ -93,9 +95,11 @@ func main() {
 		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
 		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
 		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-		Window:          99,
-		Middle:          99,
-		Aisle:           99,
+		SeatState: SeatState{
+			Window: 99,
+			Middle: 99,
+			Aisle:  99,
+		},
 	}
 	resp, _ := handler(ctx, i)
 	log.Println(resp)

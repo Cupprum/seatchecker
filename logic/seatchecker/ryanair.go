@@ -54,6 +54,7 @@ type GqlResponse[T any] struct {
 	Data T `json:"data"`
 }
 
+// TODO: rename structs regarding authentication to something more useful.
 type BAuth struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
@@ -210,56 +211,54 @@ func (c Client) getNumberOfRows(ctx context.Context, model string) (int, error) 
 	return maxRow, nil
 }
 
-// TODO: can this return struct and generateText work on that struct and some other struct?
-func calculateEmptySeats(rows int, seats []string) (int, int, int) {
-	window := rows * 2
-	middle := rows * 2
-	aisle := rows * 2
+func calculateEmptySeats(rows int, seats []string) SeatState {
+	ss := SeatState{Window: rows * 2, Middle: rows * 2, Aisle: rows * 2}
 
 	for _, s := range seats {
+		// Second character represents the seat columns.
 		switch string(s[2]) {
 		case "A", "F":
-			window -= 1
+			ss.Window -= 1
 		case "B", "E":
-			middle -= 1
+			ss.Middle -= 1
 		case "C", "D":
-			aisle -= 1
+			ss.Aisle -= 1
 		}
 	}
 
-	return window, middle, aisle
+	return ss
 }
 
-// TODO: update return values to something more normal
-func (c Client) queryRyanair(ctx context.Context, cAuth RAuth) (int, int, int, error) {
+func (c Client) queryRyanair(ctx context.Context, cAuth RAuth) (SeatState, error) {
 	// ctx, span := tr.Start(ctx, "query_ryanair")
 	// defer span.End()
 
+	// TODO: turn logs into something tracelike.
 	log.Println("Get closest Booking ID.")
 	bookingId, err := c.getBookingId(ctx, cAuth)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("get booking ID failed: %v", err)
+		return SeatState{}, fmt.Errorf("get booking ID failed: %v", err)
 	}
 	log.Printf("Booking ID retrieved successfully: %s.\n", bookingId)
 
 	log.Printf("Get Booking with ID: %s.\n", bookingId)
 	bAuth, err := c.getBookingById(ctx, cAuth, bookingId)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("get booking failed: %v", err)
+		return SeatState{}, fmt.Errorf("get booking failed: %v", err)
 	}
 	log.Printf("Booking retrieved successfully, Trip ID: %s.\n", bAuth.TripId)
 
 	log.Println("Create basket.")
 	basketId, err := c.createBasket(ctx, bAuth)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("basket creation failed: %v", err)
+		return SeatState{}, fmt.Errorf("basket creation failed: %v", err)
 	}
 	log.Printf("Basket created successfully, Basket ID: %s.\n", basketId)
 
 	log.Println("Get seats.")
 	seats, err := c.getSeatsQuery(ctx, basketId)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("get seats failed: %v", err)
+		return SeatState{}, fmt.Errorf("get seats failed: %v", err)
 	}
 	log.Println("Seats retrieved successfully.")
 	log.Printf("Model: %v\n", seats.EquipmentModel)
@@ -268,13 +267,13 @@ func (c Client) queryRyanair(ctx context.Context, cAuth RAuth) (int, int, int, e
 	log.Println("Get number of rows in the plane.")
 	rows, err := c.getNumberOfRows(ctx, seats.EquipmentModel)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("get number of rows in the plane failed: %v", err)
+		return SeatState{}, fmt.Errorf("get number of rows in the plane failed: %v", err)
 	}
 	log.Println("Number of rows retrieved successfully.")
 	log.Println(rows)
 
 	log.Println("Calculate number of empty seats.")
-	window, middle, aisle := calculateEmptySeats(rows, seats.UnavailableSeats)
+	ss := calculateEmptySeats(rows, seats.UnavailableSeats)
 
-	return window, middle, aisle, nil
+	return ss, nil
 }
