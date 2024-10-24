@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/otel"
@@ -20,13 +20,14 @@ func setupOtel(ctx context.Context) func() {
 	client := otlptracegrpc.NewClient()
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
+		log.Printf("failed to setup OTEL: %v\n", err)
 		return func() {}
 	}
 
 	detector := lambdadetector.NewResourceDetector()
-	res, err := detector.Detect(context.Background())
+	res, err := detector.Detect(ctx)
 	if err != nil {
-		fmt.Printf("failed to detect lambda resources: %v\n", err)
+		log.Printf("failed to detect lambda resources: %v\n", err)
 	}
 
 	// Create a new tracer provider with a batch span processor and the otlp exporter
