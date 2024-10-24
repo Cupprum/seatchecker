@@ -11,8 +11,8 @@ import (
 )
 
 func TestSendNotification(t *testing.T) {
-	eTopic := "test_topic"
-	eMessage := "test_text"
+	tp := "test_topic"
+	m := "test_text"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -22,11 +22,11 @@ func TestSendNotification(t *testing.T) {
 		rawB, _ := io.ReadAll(r.Body)
 		b := map[string]any{}
 		json.Unmarshal(rawB, &b)
-		if b["topic"] != eTopic {
-			t.Fatalf("wrong topic name, expected: %v, received: %v", eTopic, b["topic"])
+		if b["topic"] != tp {
+			t.Fatalf("wrong topic name, expected: %v, received: %v", tp, b["topic"])
 		}
-		if b["message"] != eMessage {
-			t.Fatalf("wrong message, expected: %v, received: %v", eMessage, b["message"])
+		if b["message"] != m {
+			t.Fatalf("wrong message, expected: %v, received: %v", m, b["message"])
 		}
 
 		// Create fake response
@@ -36,7 +36,7 @@ func TestSendNotification(t *testing.T) {
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	err := c.sendNotification(context.Background(), eTopic, eMessage)
+	err := c.sendNotification(context.Background(), tp, m)
 	if err != nil {
 		t.Fatalf("failed to send notification: %v", err)
 	}
