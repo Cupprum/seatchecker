@@ -11,9 +11,6 @@ import (
 )
 
 func TestAccountLogin(t *testing.T) {
-	ctx := context.Background()
-	defer setupOtel(ctx)()
-
 	e, p := "john@doe.com", "password"
 	rAReq := RAuth{"customerid", "token"}
 
@@ -37,7 +34,7 @@ func TestAccountLogin(t *testing.T) {
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	cARes, err := c.accountLogin(ctx, e, p)
+	cARes, err := c.accountLogin(context.Background(), e, p)
 	if err != nil {
 		t.Fatalf("failed to get account login: %v", err)
 	}

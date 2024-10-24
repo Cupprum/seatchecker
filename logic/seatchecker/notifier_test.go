@@ -11,9 +11,6 @@ import (
 )
 
 func TestSendNotification(t *testing.T) {
-	ctx := context.Background()
-	defer setupOtel(ctx)()
-
 	eTopic := "test_topic"
 	eMessage := "test_text"
 
@@ -39,7 +36,7 @@ func TestSendNotification(t *testing.T) {
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	err := c.sendNotification(ctx, eTopic, eMessage)
+	err := c.sendNotification(context.Background(), eTopic, eMessage)
 	if err != nil {
 		t.Fatalf("failed to send notification: %v", err)
 	}
