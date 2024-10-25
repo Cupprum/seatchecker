@@ -31,8 +31,8 @@ func (c Client) sendNotification(ctx context.Context, topic string, text string)
 	_, err := httpsRequestPost[any](ctx, c, "/", b)
 	if err != nil {
 		err = fmt.Errorf("failed to send notification: %v", err)
-		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	span.AddEvent("notification sent")

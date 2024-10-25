@@ -30,8 +30,8 @@ func (c Client) accountLogin(ctx context.Context, email string, password string)
 	a, err := httpsRequestPost[RAuth](ctx, c, p, b)
 	if err != nil {
 		err = fmt.Errorf("failed to get account login: %v", err)
-		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
 		return RAuth{}, err
 	}
 	span.AddEvent("account login successful")
