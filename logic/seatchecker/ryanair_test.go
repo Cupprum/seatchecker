@@ -95,8 +95,8 @@ func TestGetBookingById(t *testing.T) {
 }
 
 func TestCreateBasket(t *testing.T) {
-	bA := BAuth{"trip_id", "session_token"}
-	eId := "basket_id"
+	a := BAuth{"trip_id", "session_token"}
+	e := "basket_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -104,13 +104,13 @@ func TestCreateBasket(t *testing.T) {
 		b := GqlQuery[BAuth]{}
 		json.Unmarshal(rawB, &b)
 
-		if !reflect.DeepEqual(bA, b.Variables) {
-			t.Fatalf("wrong payload, expected: %v, received: %v", bA, b.Variables)
+		if !reflect.DeepEqual(a, b.Variables) {
+			t.Fatalf("wrong payload, expected: %v, received: %v", a, b.Variables)
 		}
 
 		// Create fake response
 		rres := GqlResponse[BData]{
-			Data: BData{Basket: BBasket{Id: eId}},
+			Data: BData{Basket: BBasket{Id: e}},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -120,18 +120,18 @@ func TestCreateBasket(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 
-	bId, err := c.createBasket(context.TODO(), bA)
+	r, err := c.createBasket(context.Background(), a)
 	if err != nil {
 		t.Fatalf("failed to create basket: %v", err)
 	}
-	if eId != bId {
-		t.Fatalf("wrong basket id, expected: %v, received %v", eId, bId)
+	if e != r {
+		t.Fatalf("wrong basket id, expected: %v, received %v", e, r)
 	}
 }
 
 func TestGetSeatsQuery(t *testing.T) {
-	bId := "basket_id"
-	s := SQSeats{[]string{"01A", "01B", "01C"}, "30A"}
+	id := "basket_id"
+	e := SQSeats{[]string{"01A", "01B", "01C"}, "30A"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -139,13 +139,13 @@ func TestGetSeatsQuery(t *testing.T) {
 		b := GqlQuery[SQBasket]{}
 		json.Unmarshal(rawB, &b)
 
-		if bId != b.Variables.BId {
-			t.Fatalf("wrong payload, expected: %v, received: %v", bId, b.Variables)
+		if id != b.Variables.BId {
+			t.Fatalf("wrong payload, expected: %v, received: %v", id, b.Variables)
 		}
 
 		// Create fake response
 		rres := GqlResponse[SQData]{
-			Data: SQData{Seats: []SQSeats{s}},
+			Data: SQData{Seats: []SQSeats{e}},
 		}
 
 		res, _ := json.Marshal(rres)
@@ -156,13 +156,13 @@ func TestGetSeatsQuery(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 
-	qs, err := c.getSeatsQuery(context.TODO(), bId)
+	r, err := c.getSeatsQuery(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to query seats: %v", err)
 	}
 
-	if !reflect.DeepEqual(s, qs) {
-		t.Fatalf("wrong seats, expected: %v, received: %v", s, qs)
+	if !reflect.DeepEqual(e, r) {
+		t.Fatalf("wrong seats, expected: %v, received: %v", e, r)
 	}
 }
 
@@ -187,7 +187,7 @@ func TestGetNumberOfRows(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 
-	rrows, err := c.getNumberOfRows(context.TODO(), m)
+	rrows, err := c.getNumberOfRows(context.Background(), m)
 	if err != nil {
 		t.Fatalf("failed to get number of rows: %v\n", err)
 	}
