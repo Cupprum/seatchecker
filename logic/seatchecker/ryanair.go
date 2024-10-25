@@ -52,9 +52,9 @@ func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
 
 	// Items only contain single item.
 	// Flights contain a single booking with multiple segments of flight.
-	bid := r.Items[0].Flights[0].BookingId
-	span.SetAttributes(attribute.String("bookingId", bid))
-	return bid, nil
+	id := r.Items[0].Flights[0].BookingId
+	span.SetAttributes(attribute.String("bookingId", id))
+	return id, nil
 }
 
 type GqlQuery[T any] struct {
@@ -130,8 +130,8 @@ type BData struct {
 }
 
 func (c Client) createBasket(ctx context.Context, a BAuth) (string, error) {
-	// ctx, span := tr.Start(ctx, "create_basket")
-	// defer span.End()
+	ctx, span := tr.Start(ctx, "create_basket")
+	defer span.End()
 
 	p := "api/basketapi/en-gb/graphql"
 
@@ -149,10 +149,15 @@ func (c Client) createBasket(ctx context.Context, a BAuth) (string, error) {
 
 	r, err := httpsRequestPost[GqlResponse[BData]](ctx, c, p, b)
 	if err != nil {
-		return "", fmt.Errorf("failed to create basket: %v", err)
+		err = fmt.Errorf("failed to create basket: %v", err)
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return "", err
 	}
 
-	return r.Data.Basket.Id, nil
+	id := r.Data.Basket.Id
+	span.SetAttributes(attribute.String("basketId", id))
+	return id, nil
 }
 
 type SQBasket struct {
@@ -169,8 +174,9 @@ type SQData struct {
 }
 
 func (c Client) getSeatsQuery(ctx context.Context, basketId string) (SQSeats, error) {
-	// ctx, span := tr.Start(ctx, "get_seats_query")
-	// defer span.End()
+	ctx, span := tr.Start(ctx, "get_seats_query")
+	defer span.End()
+	span.SetAttributes(attribute.String("basketId", basketId))
 
 	p := "api/catalogapi/en-gb/graphql"
 
@@ -192,12 +198,16 @@ func (c Client) getSeatsQuery(ctx context.Context, basketId string) (SQSeats, er
 
 	r, err := httpsRequestPost[GqlResponse[SQData]](ctx, c, p, b)
 	if err != nil {
-		return SQSeats{}, fmt.Errorf("failed to get seats: %v", err)
+		err = fmt.Errorf("failed to get seats: %v", err)
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return SQSeats{}, err
 	}
 
 	// TODO: what is this supposed to return? always first? what if i ma on the way back?
 	s := r.Data.Seats[0]
-
+	span.SetAttributes(attribute.String("equipmentModel", s.EquipmentModel))
+	span.SetAttributes(attribute.Int("unavailableSeats", len(s.UnavailableSeats)))
 	return s, nil
 }
 
