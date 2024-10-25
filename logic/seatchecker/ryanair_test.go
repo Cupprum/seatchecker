@@ -13,23 +13,22 @@ import (
 )
 
 func TestGetBookingId(t *testing.T) {
-	cAReq := RAuth{"customerid", "token"}
+	a := RAuth{"customerid", "token"}
 	eId := "booking_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
-		if !strings.Contains(r.URL.Path, cAReq.CustomerID) {
+		if !strings.Contains(r.URL.Path, a.CustomerID) {
 			t.Fatalf("missing Customer ID in URL, received URL Path: %v", r.URL.Path)
 		}
-		rT := r.Header["X-Auth-Token"][0]
-		if cAReq.Token != rT {
-			t.Fatalf("invalid auth token, expected: %v, received: %v", cAReq.Token, rT)
+		if rT := r.Header["X-Auth-Token"][0]; a.Token != rT {
+			t.Fatalf("invalid auth token, expected: %v, received: %v", a.Token, rT)
 		}
 		if !strings.Contains(r.URL.RawQuery, "active=true") {
-			t.Fatalf("missing url encoded query string parameter, name: active")
+			t.Fatal("missing url encoded query string parameter, name: active")
 		}
 		if !strings.Contains(r.URL.RawQuery, "order=ASC") {
-			t.Fatalf("missing url encoded query string parameter, name: order")
+			t.Fatal("missing url encoded query string parameter, name: order")
 		}
 
 		// Create fake response
@@ -49,7 +48,7 @@ func TestGetBookingId(t *testing.T) {
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	rId, err := c.getBookingId(context.TODO(), cAReq)
+	rId, err := c.getBookingId(context.Background(), a)
 	if err != nil {
 		t.Fatalf("failed to get booking id: %v", err)
 	}
@@ -59,6 +58,7 @@ func TestGetBookingId(t *testing.T) {
 }
 
 func TestGetBookingById(t *testing.T) {
+	e := BAuth{TripId: "trip_id", SessionToken: "session_token"}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
@@ -72,7 +72,7 @@ func TestGetBookingById(t *testing.T) {
 
 		// Create fake response
 		rres := GqlResponse[BBIdData]{
-			Data: BBIdData{GetBookingByBookingId: BAuth{TripId: "trip_id", SessionToken: "session_token"}},
+			Data: BBIdData{GetBookingByBookingId: e},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -81,16 +81,16 @@ func TestGetBookingById(t *testing.T) {
 
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
-	cAReq := RAuth{"customerid", "token"}
-	bA, err := c.getBookingById(context.TODO(), cAReq, "booking_id")
+	a := RAuth{"customerid", "token"}
+	r, err := c.getBookingById(context.Background(), a, "booking_id")
 	if err != nil {
 		t.Fatalf("failed to get booking: %v", err)
 	}
-	if bA.SessionToken != "session_token" {
-		t.Fatalf("wrong session token, expected: session_token, received %v", bA.SessionToken)
+	if e.SessionToken != r.SessionToken {
+		t.Fatalf("wrong session token, expected: %v, received %v", e.SessionToken, r.SessionToken)
 	}
-	if bA.TripId != "trip_id" {
-		t.Fatalf("wrong trip id, expected: trip_id, received %v", bA.TripId)
+	if e.TripId != r.TripId {
+		t.Fatalf("wrong trip id, expected: %v, received %v", e.TripId, r.TripId)
 	}
 }
 
