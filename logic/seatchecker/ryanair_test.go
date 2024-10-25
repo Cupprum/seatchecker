@@ -168,7 +168,7 @@ func TestGetSeatsQuery(t *testing.T) {
 
 func TestGetNumberOfRows(t *testing.T) {
 	m := "32A"
-	rows := 30
+	e := 30
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -177,7 +177,7 @@ func TestGetNumberOfRows(t *testing.T) {
 		}
 
 		// Create fake response
-		rres := []Equipment{{SeatRows: [][]Seat{{{Row: 1}}, {{Row: rows}}}}}
+		rres := []Equipment{{SeatRows: [][]Seat{{{Row: 1}}, {{Row: e}}}}}
 
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -187,25 +187,25 @@ func TestGetNumberOfRows(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 
-	rrows, err := c.getNumberOfRows(context.Background(), m)
+	r, err := c.getNumberOfRows(context.Background(), m)
 	if err != nil {
 		t.Fatalf("failed to get number of rows: %v\n", err)
 	}
 
-	if rows != rrows {
-		t.Fatalf("wrong number of seats, expected: %v, received: %v\n", rows, rrows)
+	if e != r {
+		t.Fatalf("wrong number of seats, expected: %v, received: %v\n", e, r)
 	}
 }
 
 func TestCalculateEmptySeats(t *testing.T) {
-	r := 4
+	rws := 4
 
-	test := func(s []string, ess SeatState) {
-		rss := calculateEmptySeats(r, s)
-		if rss != ess {
-			eTxt := ess.generateText()
-			rTxt := rss.generateText()
-			t.Fatalf("wrong number of calculated empty seats, expected: %v, received: %v\n", eTxt, rTxt)
+	test := func(s []string, e SeatState) {
+		r := calculateEmptySeats(rws, s)
+		if r != e {
+			et := e.generateText()
+			rt := r.generateText()
+			t.Fatalf("wrong number of calculated empty seats, expected: %v, received: %v\n", et, rt)
 		}
 	}
 
@@ -226,7 +226,7 @@ func TestCalculateEmptySeats(t *testing.T) {
 	test(ss, SeatState{4, 0, 2})
 
 	ns := []string{}
-	ms := r * 2
+	ms := rws * 2
 	test(ns, SeatState{ms, ms, ms})
 }
 
