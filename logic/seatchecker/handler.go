@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 type SeatState struct {
@@ -90,17 +91,17 @@ func main() {
 	// TODO: try to simplify OTEL through ADOT.
 	defer setupOtel(ctx)()
 
-	// lambda.Start(handler)
-	i := Event{
-		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
-		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
-		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-		SeatState: SeatState{
-			Window: 99,
-			Middle: 99,
-			Aisle:  99,
-		},
-	}
-	resp, _ := handler(ctx, i)
-	log.Println(resp)
+	lambda.Start(handler)
+	// i := Event{
+	// 	RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+	// 	RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+	// 	NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+	// 	SeatState: SeatState{
+	// 		Window: 99,
+	// 		Middle: 99,
+	// 		Aisle:  99,
+	// 	},
+	// }
+	// resp, _ := handler(ctx, i)
+	// log.Println(resp)
 }
