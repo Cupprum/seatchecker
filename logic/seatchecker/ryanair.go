@@ -6,6 +6,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type BIdFlight struct {
@@ -19,12 +23,15 @@ type BIdResp struct {
 }
 
 func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
-	// ctx, span := tr.Start(ctx, "get_booking_id")
-	// defer span.End()
+	ctx, span := tr.Start(ctx, "get_booking_id")
+	defer span.End()
 
 	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
-		return "", fmt.Errorf("failed to create path: %v", err)
+		err = fmt.Errorf("failed to create path: %v", err)
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return "", err
 	}
 
 	q := url.Values{}
@@ -37,12 +44,17 @@ func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
 
 	r, err := httpsRequestGet[BIdResp](ctx, c, p, q, h)
 	if err != nil {
-		return "", fmt.Errorf("failed to get orders: %v", err)
+		err = fmt.Errorf("failed to get orders: %v", err)
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return "", err
 	}
 
 	// Items only contain single item.
 	// Flights contain a single booking with multiple segments of flight.
-	return r.Items[0].Flights[0].BookingId, nil
+	bid := r.Items[0].Flights[0].BookingId
+	span.SetAttributes(attribute.String("bookingId", bid))
+	return bid, nil
 }
 
 type GqlQuery[T any] struct {
@@ -74,9 +86,11 @@ type BBIdData struct {
 	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
 }
 
+// TODO: rename to getSessionToken or something similar.
 func (c Client) getBookingById(ctx context.Context, a RAuth, bookingId string) (BAuth, error) {
-	// ctx, span := tr.Start(ctx, "get_booking_by_id")
-	// defer span.End()
+	ctx, span := tr.Start(ctx, "get_booking_by_id")
+	defer span.End()
+	span.SetAttributes(attribute.String("bookingId", bookingId))
 
 	p := "api/bookingfa/en-gb/graphql"
 
@@ -96,10 +110,15 @@ func (c Client) getBookingById(ctx context.Context, a RAuth, bookingId string) (
 
 	r, err := httpsRequestPost[GqlResponse[BBIdData]](ctx, c, p, b)
 	if err != nil {
-		return BAuth{}, fmt.Errorf("failed to get booking: %v", err)
+		err = fmt.Errorf("failed to get booking: %v", err)
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return BAuth{}, err
 	}
 
-	return r.Data.GetBookingByBookingId, nil
+	bAuth := r.Data.GetBookingByBookingId
+	span.SetAttributes(attribute.String("tripId", bAuth.TripId))
+	return bAuth, nil
 }
 
 type BBasket struct {
