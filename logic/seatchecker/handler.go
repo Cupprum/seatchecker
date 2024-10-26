@@ -50,7 +50,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
 
 	log.Println("Query Ryanair for seats.")
-	ss, err := rc.queryRyanair(ctx, cAuth)
+	es, err := rc.getEmptySeats(ctx, cAuth)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Printf("Error: %v\n", err)
@@ -61,7 +61,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	pTxt := e.SeatState.generateText()
 	log.Printf("Previous execution: %v", pTxt)
 
-	cTxt := ss.generateText()
+	cTxt := es.generateText()
 	log.Printf("Current execution: %v", cTxt)
 
 	if pTxt != cTxt {
@@ -77,7 +77,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		log.Println("Notification sent successfully.")
 	}
 
-	e.SeatState = ss
+	e.SeatState = es
 	e.Status = 200
 
 	log.Println("Program finished successfully.")

@@ -34,7 +34,7 @@ func (c Client) accountLogin(ctx context.Context, email string, password string)
 		span.SetStatus(codes.Error, err.Error())
 		return RAuth{}, err
 	}
-	span.AddEvent("account login successful")
+	span.AddEvent("Account login successful.")
 
 	return a, nil
 }

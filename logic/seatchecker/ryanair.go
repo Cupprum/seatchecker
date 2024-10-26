@@ -251,8 +251,8 @@ func calculateEmptySeats(rows int, seats []string) EmptySeats {
 	return es
 }
 
-func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
-	ctx, span := tr.Start(ctx, "query_ryanair")
+func (c Client) getEmptySeats(ctx context.Context, a RAuth) (EmptySeats, error) {
+	ctx, span := tr.Start(ctx, "ryanair_get_empty_seats")
 	defer span.End()
 
 	log.Println("Get closest Booking ID.")
