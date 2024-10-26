@@ -67,30 +67,29 @@ type GqlResponse[T any] struct {
 }
 
 // TODO: rename structs regarding authentication to something more useful.
-type BAuth struct {
+type SessionInfo struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
 }
 
-type BBIdInfo struct {
+type BInfo struct {
 	BookingId   string `json:"bookingId"`
 	SurrogateId string `json:"surrogateId"`
 }
 
-type BBIdVars struct {
-	BookingInfo BBIdInfo `json:"bookingInfo"`
-	AuthToken   string   `json:"authToken"`
+type SIVars struct {
+	BookingInfo BInfo  `json:"bookingInfo"`
+	AuthToken   string `json:"authToken"`
 }
 
-type BBIdData struct {
-	GetBookingByBookingId BAuth `json:"getBookingByBookingId"`
+type SIData struct {
+	GetBookingByBookingId SessionInfo `json:"getBookingByBookingId"`
 }
 
-// TODO: rename to getSessionToken or something similar.
-func (c Client) getBookingById(ctx context.Context, a RAuth, bId string) (BAuth, error) {
+func (c Client) getSessionInfo(ctx context.Context, a RAuth, id string) (SessionInfo, error) {
 	ctx, span := tr.Start(ctx, "get_booking_by_id")
 	defer span.End()
-	span.SetAttributes(attribute.String("bookingId", bId))
+	span.SetAttributes(attribute.String("bookingId", id))
 
 	p := "api/bookingfa/en-gb/graphql"
 
@@ -102,18 +101,18 @@ func (c Client) getBookingById(ctx context.Context, a RAuth, bId string) (BAuth,
 			}
 		}
 	`
-	v := BBIdVars{
-		BBIdInfo{bId, a.CustomerID},
+	v := SIVars{
+		BInfo{id, a.CustomerID},
 		a.Token,
 	}
-	b := GqlQuery[BBIdVars]{Query: q, Variables: v}
+	b := GqlQuery[SIVars]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[BBIdData]](ctx, c, p, b)
+	r, err := httpsRequestPost[GqlResponse[SIData]](ctx, c, p, b)
 	if err != nil {
 		err = fmt.Errorf("failed to get booking: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
-		return BAuth{}, err
+		return SessionInfo{}, err
 	}
 
 	bAuth := r.Data.GetBookingByBookingId
@@ -129,7 +128,7 @@ type BData struct {
 	Basket BBasket `json:"createBasketForActiveTrip"`
 }
 
-func (c Client) createBasket(ctx context.Context, a BAuth) (string, error) {
+func (c Client) createBasket(ctx context.Context, a SessionInfo) (string, error) {
 	ctx, span := tr.Start(ctx, "create_basket")
 	defer span.End()
 
@@ -145,7 +144,7 @@ func (c Client) createBasket(ctx context.Context, a BAuth) (string, error) {
 			id
 		}
 	`
-	b := GqlQuery[BAuth]{Query: q, Variables: a}
+	b := GqlQuery[SessionInfo]{Query: q, Variables: a}
 
 	r, err := httpsRequestPost[GqlResponse[BData]](ctx, c, p, b)
 	if err != nil {
@@ -173,10 +172,10 @@ type SQData struct {
 	Seats []SQSeats `json:"seats"`
 }
 
-func (c Client) getSeatsQuery(ctx context.Context, bId string) (SQSeats, error) {
+func (c Client) getSeatsQuery(ctx context.Context, id string) (SQSeats, error) {
 	ctx, span := tr.Start(ctx, "get_seats_query")
 	defer span.End()
-	span.SetAttributes(attribute.String("basketId", bId))
+	span.SetAttributes(attribute.String("basketId", id))
 
 	p := "api/catalogapi/en-gb/graphql"
 
@@ -191,7 +190,7 @@ func (c Client) getSeatsQuery(ctx context.Context, bId string) (SQSeats, error) 
 			equipmentModel
 		}
 	`
-	v := SQBasket{bId}
+	v := SQBasket{id}
 	b := GqlQuery[SQBasket]{Query: q, Variables: v}
 
 	r, err := httpsRequestPost[GqlResponse[SQData]](ctx, c, p, b)
@@ -274,7 +273,7 @@ func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
 	span.AddEvent("Booking ID retrieved successfully.", trace.WithAttributes(attribute.String("bookingId", bookingId)))
 
 	log.Printf("Get Booking with ID: %s.\n", bookingId)
-	bAuth, err := c.getBookingById(ctx, a, bookingId)
+	bAuth, err := c.getSessionInfo(ctx, a, bookingId)
 	if err != nil {
 		err := fmt.Errorf("get booking failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))

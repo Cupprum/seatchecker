@@ -58,21 +58,21 @@ func TestGetBookingId(t *testing.T) {
 }
 
 func TestGetBookingById(t *testing.T) {
-	e := BAuth{TripId: "trip_id", SessionToken: "session_token"}
+	e := SessionInfo{TripId: "trip_id", SessionToken: "session_token"}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
-		b := GqlQuery[BBIdVars]{}
+		b := GqlQuery[SIVars]{}
 		json.Unmarshal(rawB, &b)
 
-		v := BBIdVars{AuthToken: "token", BookingInfo: BBIdInfo{BookingId: "booking_id", SurrogateId: "customerid"}}
+		v := SIVars{AuthToken: "token", BookingInfo: BInfo{BookingId: "booking_id", SurrogateId: "customerid"}}
 		if !reflect.DeepEqual(v, b.Variables) {
 			t.Fatalf("wrong payload, expected: %v, received: %v", v, b.Variables)
 		}
 
 		// Create fake response
-		rres := GqlResponse[BBIdData]{
-			Data: BBIdData{GetBookingByBookingId: e},
+		rres := GqlResponse[SIData]{
+			Data: SIData{GetBookingByBookingId: e},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -82,7 +82,7 @@ func TestGetBookingById(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 	a := RAuth{"customerid", "token"}
-	r, err := c.getBookingById(context.Background(), a, "booking_id")
+	r, err := c.getSessionInfo(context.Background(), a, "booking_id")
 	if err != nil {
 		t.Fatalf("failed to get booking: %v", err)
 	}
@@ -95,13 +95,13 @@ func TestGetBookingById(t *testing.T) {
 }
 
 func TestCreateBasket(t *testing.T) {
-	a := BAuth{"trip_id", "session_token"}
+	a := SessionInfo{"trip_id", "session_token"}
 	e := "basket_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
-		b := GqlQuery[BAuth]{}
+		b := GqlQuery[SessionInfo]{}
 		json.Unmarshal(rawB, &b)
 
 		if !reflect.DeepEqual(a, b.Variables) {
