@@ -53,7 +53,6 @@ func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
 	// Items only contain single item.
 	// Flights contain a single booking with multiple segments of flight.
 	id := r.Items[0].Flights[0].BookingId
-	span.SetAttributes(attribute.String("bookingId", id))
 	return id, nil
 }
 
@@ -89,7 +88,6 @@ type SIData struct {
 func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, error) {
 	ctx, span := tr.Start(ctx, "get_trip_info")
 	defer span.End()
-	span.SetAttributes(attribute.String("bookingId", id))
 
 	p := "api/bookingfa/en-gb/graphql"
 
@@ -116,7 +114,6 @@ func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, 
 	}
 
 	si := r.Data.TripInfo
-	span.SetAttributes(attribute.String("tripId", si.TripId))
 	return si, nil
 }
 
@@ -155,7 +152,6 @@ func (c Client) createBasket(ctx context.Context, ti TripInfo) (string, error) {
 	}
 
 	id := r.Data.Basket.Id
-	span.SetAttributes(attribute.String("basketId", id))
 	return id, nil
 }
 
@@ -175,7 +171,6 @@ type FIData struct {
 func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error) {
 	ctx, span := tr.Start(ctx, "get_flight_info")
 	defer span.End()
-	span.SetAttributes(attribute.String("basketId", id))
 
 	p := "api/catalogapi/en-gb/graphql"
 
@@ -203,8 +198,6 @@ func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error
 
 	// TODO: what is this supposed to return? always first? what if i ma on the way back?
 	fi := r.Data.FlightInfos[0]
-	span.SetAttributes(attribute.String("equipmentModel", fi.EquipmentModel))
-	span.SetAttributes(attribute.Int("unavailableSeats", len(fi.UnavailableSeats)))
 	return fi, nil
 }
 
@@ -219,7 +212,6 @@ type NORResp struct {
 func (c Client) getNumberOfRows(ctx context.Context, m string) (int, error) {
 	ctx, span := tr.Start(ctx, "get_number_of_rows")
 	defer span.End()
-	span.SetAttributes(attribute.String("model", m))
 
 	p := "api/booking/v5/en-ie/res/seatmap"
 
@@ -291,7 +283,7 @@ func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
 		span.SetStatus(codes.Error, err.Error())
 		return EmptySeats{}, err
 	}
-	span.AddEvent("Basket created successfully.", trace.WithAttributes(attribute.String("basketId", basketId)))
+	span.AddEvent("Basket created successfully.")
 
 	log.Println("Get Flight info.")
 	fi, err := c.getFlightInfo(ctx, basketId)
