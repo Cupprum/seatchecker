@@ -200,7 +200,7 @@ func TestGetNumberOfRows(t *testing.T) {
 func TestCalculateEmptySeats(t *testing.T) {
 	rws := 4
 
-	test := func(s []string, e SeatState) {
+	test := func(s []string, e EmptySeats) {
 		r := calculateEmptySeats(rws, s)
 		if r != e {
 			et := e.generateText()
@@ -215,7 +215,7 @@ func TestCalculateEmptySeats(t *testing.T) {
 		"03A", "03B", "03C", "03D", "03E", "03F",
 		"04A", "04B", "04C", "04D", "04E", "04F",
 	}
-	test(fs, SeatState{0, 0, 0})
+	test(fs, EmptySeats{0, 0, 0})
 
 	ss := []string{
 		"01A", "01B", "01E",
@@ -223,11 +223,11 @@ func TestCalculateEmptySeats(t *testing.T) {
 		"03B", "03C", "03D", "03E", "03F",
 		"04A", "04B", "04C", "04D", "04E",
 	}
-	test(ss, SeatState{4, 0, 2})
+	test(ss, EmptySeats{4, 0, 2})
 
 	ns := []string{}
 	ms := rws * 2
-	test(ns, SeatState{ms, ms, ms})
+	test(ns, EmptySeats{ms, ms, ms})
 }
 
 func TestQueryRyanair(t *testing.T) {

@@ -4,26 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log"
-
-	"github.com/aws/aws-lambda-go/lambda"
+	"os"
 )
 
-type SeatState struct {
+type EmptySeats struct {
 	Window int `json:"window"`
 	Middle int `json:"middle"`
 	Aisle  int `json:"aisle"`
 }
 
 type Event struct {
-	RyanairEmail    string    `json:"ryanair_email"`
-	RyanairPassword string    `json:"ryanair_password"`
-	NtfyTopic       string    `json:"ntfy_topic"`
-	SeatState       SeatState `json:"seat_state"`
-	Status          int       `json:"status"`
-	Message         string    `json:"message"`
+	RyanairEmail    string     `json:"ryanair_email"`
+	RyanairPassword string     `json:"ryanair_password"`
+	NtfyTopic       string     `json:"ntfy_topic"`
+	SeatState       EmptySeats `json:"seat_state"`
+	Status          int        `json:"status"`
+	Message         string     `json:"message"`
 }
 
-func (ss SeatState) generateText() string {
+func (ss EmptySeats) generateText() string {
 	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", ss.Window, ss.Middle, ss.Aisle)
 }
 
@@ -91,17 +90,17 @@ func main() {
 	// TODO: try to simplify OTEL through ADOT.
 	defer setupOtel(ctx)()
 
-	lambda.Start(handler)
-	// i := Event{
-	// 	RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
-	// 	RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
-	// 	NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-	// 	SeatState: SeatState{
-	// 		Window: 99,
-	// 		Middle: 99,
-	// 		Aisle:  99,
-	// 	},
-	// }
-	// resp, _ := handler(ctx, i)
-	// log.Println(resp)
+	// lambda.Start(handler)
+	i := Event{
+		RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+		RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+		NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+		SeatState: EmptySeats{
+			Window: 99,
+			Middle: 99,
+			Aisle:  99,
+		},
+	}
+	resp, _ := handler(ctx, i)
+	log.Println(resp)
 }
