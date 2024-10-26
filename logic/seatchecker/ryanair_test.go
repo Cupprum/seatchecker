@@ -72,7 +72,7 @@ func TestGetBookingById(t *testing.T) {
 
 		// Create fake response
 		rres := GqlResponse[SIData]{
-			Data: SIData{GetBookingByBookingId: e},
+			Data: SIData{SessionInfo: e},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -110,7 +110,7 @@ func TestCreateBasket(t *testing.T) {
 
 		// Create fake response
 		rres := GqlResponse[BData]{
-			Data: BData{Basket: BBasket{Id: e}},
+			Data: BData{Basket: Basket{Id: e}},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -131,12 +131,12 @@ func TestCreateBasket(t *testing.T) {
 
 func TestGetSeatsQuery(t *testing.T) {
 	id := "basket_id"
-	e := SQSeats{[]string{"01A", "01B", "01C"}, "30A"}
+	e := FlightInfo{[]string{"01A", "01B", "01C"}, "30A"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
-		b := GqlQuery[SQBasket]{}
+		b := GqlQuery[FIVars]{}
 		json.Unmarshal(rawB, &b)
 
 		if id != b.Variables.BId {
@@ -144,8 +144,8 @@ func TestGetSeatsQuery(t *testing.T) {
 		}
 
 		// Create fake response
-		rres := GqlResponse[SQData]{
-			Data: SQData{Seats: []SQSeats{e}},
+		rres := GqlResponse[FIData]{
+			Data: FIData{FlightInfos: []FlightInfo{e}},
 		}
 
 		res, _ := json.Marshal(rres)
@@ -156,7 +156,7 @@ func TestGetSeatsQuery(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 
-	r, err := c.getSeatsQuery(context.Background(), id)
+	r, err := c.getFlightInfo(context.Background(), id)
 	if err != nil {
 		t.Fatalf("failed to query seats: %v", err)
 	}

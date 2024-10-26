@@ -83,7 +83,7 @@ type SIVars struct {
 }
 
 type SIData struct {
-	GetBookingByBookingId SessionInfo `json:"getBookingByBookingId"`
+	SessionInfo SessionInfo `json:"getBookingByBookingId"`
 }
 
 func (c Client) getSessionInfo(ctx context.Context, a RAuth, id string) (SessionInfo, error) {
@@ -115,17 +115,17 @@ func (c Client) getSessionInfo(ctx context.Context, a RAuth, id string) (Session
 		return SessionInfo{}, err
 	}
 
-	bAuth := r.Data.GetBookingByBookingId
-	span.SetAttributes(attribute.String("tripId", bAuth.TripId))
-	return bAuth, nil
+	si := r.Data.SessionInfo
+	span.SetAttributes(attribute.String("tripId", si.TripId))
+	return si, nil
 }
 
-type BBasket struct {
+type Basket struct {
 	Id string `json:"id"`
 }
 
 type BData struct {
-	Basket BBasket `json:"createBasketForActiveTrip"`
+	Basket Basket `json:"createBasketForActiveTrip"`
 }
 
 func (c Client) createBasket(ctx context.Context, a SessionInfo) (string, error) {
@@ -159,20 +159,20 @@ func (c Client) createBasket(ctx context.Context, a SessionInfo) (string, error)
 	return id, nil
 }
 
-type SQBasket struct {
-	BId string `json:"basketId"`
-}
-
-type SQSeats struct {
+type FlightInfo struct {
 	UnavailableSeats []string `json:"unavailableSeats"`
 	EquipmentModel   string   `json:"equipmentModel"`
 }
 
-type SQData struct {
-	Seats []SQSeats `json:"seats"`
+type FIVars struct {
+	BId string `json:"basketId"`
 }
 
-func (c Client) getSeatsQuery(ctx context.Context, id string) (SQSeats, error) {
+type FIData struct {
+	FlightInfos []FlightInfo `json:"seats"`
+}
+
+func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error) {
 	ctx, span := tr.Start(ctx, "get_seats_query")
 	defer span.End()
 	span.SetAttributes(attribute.String("basketId", id))
@@ -190,22 +190,22 @@ func (c Client) getSeatsQuery(ctx context.Context, id string) (SQSeats, error) {
 			equipmentModel
 		}
 	`
-	v := SQBasket{id}
-	b := GqlQuery[SQBasket]{Query: q, Variables: v}
+	v := FIVars{id}
+	b := GqlQuery[FIVars]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[SQData]](ctx, c, p, b)
+	r, err := httpsRequestPost[GqlResponse[FIData]](ctx, c, p, b)
 	if err != nil {
 		err = fmt.Errorf("failed to get seats: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
-		return SQSeats{}, err
+		return FlightInfo{}, err
 	}
 
 	// TODO: what is this supposed to return? always first? what if i ma on the way back?
-	s := r.Data.Seats[0]
-	span.SetAttributes(attribute.String("equipmentModel", s.EquipmentModel))
-	span.SetAttributes(attribute.Int("unavailableSeats", len(s.UnavailableSeats)))
-	return s, nil
+	fi := r.Data.FlightInfos[0]
+	span.SetAttributes(attribute.String("equipmentModel", fi.EquipmentModel))
+	span.SetAttributes(attribute.Int("unavailableSeats", len(fi.UnavailableSeats)))
+	return fi, nil
 }
 
 type Seat struct {
@@ -293,7 +293,7 @@ func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
 	span.AddEvent("Basket created successfully.", trace.WithAttributes(attribute.String("basketId", basketId)))
 
 	log.Println("Get seats.")
-	seats, err := c.getSeatsQuery(ctx, basketId)
+	seats, err := c.getFlightInfo(ctx, basketId)
 	if err != nil {
 		err = fmt.Errorf("get seats failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
