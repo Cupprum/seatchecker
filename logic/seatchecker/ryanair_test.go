@@ -58,7 +58,7 @@ func TestGetBookingId(t *testing.T) {
 }
 
 func TestGetBookingById(t *testing.T) {
-	e := SessionInfo{TripId: "trip_id", SessionToken: "session_token"}
+	e := TripInfo{TripId: "trip_id", SessionToken: "session_token"}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
@@ -72,7 +72,7 @@ func TestGetBookingById(t *testing.T) {
 
 		// Create fake response
 		rres := GqlResponse[SIData]{
-			Data: SIData{SessionInfo: e},
+			Data: SIData{TripInfo: e},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -82,7 +82,7 @@ func TestGetBookingById(t *testing.T) {
 	// Check received response
 	c := Client{scheme: "http", fqdn: ts.URL}
 	a := RAuth{"customerid", "token"}
-	r, err := c.getSessionInfo(context.Background(), a, "booking_id")
+	r, err := c.getTripInfo(context.Background(), a, "booking_id")
 	if err != nil {
 		t.Fatalf("failed to get booking: %v", err)
 	}
@@ -95,13 +95,13 @@ func TestGetBookingById(t *testing.T) {
 }
 
 func TestCreateBasket(t *testing.T) {
-	a := SessionInfo{"trip_id", "session_token"}
+	a := TripInfo{"trip_id", "session_token"}
 	e := "basket_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
-		b := GqlQuery[SessionInfo]{}
+		b := GqlQuery[TripInfo]{}
 		json.Unmarshal(rawB, &b)
 
 		if !reflect.DeepEqual(a, b.Variables) {
@@ -168,7 +168,6 @@ func TestGetSeatsQuery(t *testing.T) {
 
 func TestGetNumberOfRows(t *testing.T) {
 	m := "32A"
-	e := 30
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
@@ -177,7 +176,7 @@ func TestGetNumberOfRows(t *testing.T) {
 		}
 
 		// Create fake response
-		rres := []Equipment{{SeatRows: [][]Seat{{{Row: 1}}, {{Row: e}}}}}
+		rres := []NORResp{{SeatRows: [][]NORSeat{{{Row: 1}}, {{Row: 2}}}}}
 
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))
@@ -192,8 +191,8 @@ func TestGetNumberOfRows(t *testing.T) {
 		t.Fatalf("failed to get number of rows: %v\n", err)
 	}
 
-	if e != r {
-		t.Fatalf("wrong number of seats, expected: %v, received: %v\n", e, r)
+	if r != 2 {
+		t.Fatalf("wrong number of seats, expected: 2, received: %v\n", r)
 	}
 }
 

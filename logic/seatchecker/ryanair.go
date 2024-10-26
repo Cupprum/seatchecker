@@ -67,7 +67,7 @@ type GqlResponse[T any] struct {
 }
 
 // TODO: rename structs regarding authentication to something more useful.
-type SessionInfo struct {
+type TripInfo struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
 }
@@ -83,11 +83,11 @@ type SIVars struct {
 }
 
 type SIData struct {
-	SessionInfo SessionInfo `json:"getBookingByBookingId"`
+	TripInfo TripInfo `json:"getBookingByBookingId"`
 }
 
-func (c Client) getSessionInfo(ctx context.Context, a RAuth, id string) (SessionInfo, error) {
-	ctx, span := tr.Start(ctx, "get_booking_by_id")
+func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, error) {
+	ctx, span := tr.Start(ctx, "get_trip_info")
 	defer span.End()
 	span.SetAttributes(attribute.String("bookingId", id))
 
@@ -112,10 +112,10 @@ func (c Client) getSessionInfo(ctx context.Context, a RAuth, id string) (Session
 		err = fmt.Errorf("failed to get booking: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
-		return SessionInfo{}, err
+		return TripInfo{}, err
 	}
 
-	si := r.Data.SessionInfo
+	si := r.Data.TripInfo
 	span.SetAttributes(attribute.String("tripId", si.TripId))
 	return si, nil
 }
@@ -128,7 +128,7 @@ type BData struct {
 	Basket Basket `json:"createBasketForActiveTrip"`
 }
 
-func (c Client) createBasket(ctx context.Context, a SessionInfo) (string, error) {
+func (c Client) createBasket(ctx context.Context, ti TripInfo) (string, error) {
 	ctx, span := tr.Start(ctx, "create_basket")
 	defer span.End()
 
@@ -144,7 +144,7 @@ func (c Client) createBasket(ctx context.Context, a SessionInfo) (string, error)
 			id
 		}
 	`
-	b := GqlQuery[SessionInfo]{Query: q, Variables: a}
+	b := GqlQuery[TripInfo]{Query: q, Variables: ti}
 
 	r, err := httpsRequestPost[GqlResponse[BData]](ctx, c, p, b)
 	if err != nil {
@@ -173,7 +173,7 @@ type FIData struct {
 }
 
 func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error) {
-	ctx, span := tr.Start(ctx, "get_seats_query")
+	ctx, span := tr.Start(ctx, "get_flight_info")
 	defer span.End()
 	span.SetAttributes(attribute.String("basketId", id))
 
@@ -208,12 +208,12 @@ func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error
 	return fi, nil
 }
 
-type Seat struct {
+type NORSeat struct {
 	Row int `json:"row"`
 }
 
-type Equipment struct {
-	SeatRows [][]Seat `json:"seatRows"`
+type NORResp struct {
+	SeatRows [][]NORSeat `json:"seatRows"`
 }
 
 func (c Client) getNumberOfRows(ctx context.Context, m string) (int, error) {
@@ -226,7 +226,7 @@ func (c Client) getNumberOfRows(ctx context.Context, m string) (int, error) {
 	q := url.Values{}
 	q.Add("aircraftModel", m)
 
-	e, err := httpsRequestGet[[]Equipment](ctx, c, p, q, nil)
+	rs, err := httpsRequestGet[[]NORResp](ctx, c, p, q, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to get seatmap: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
@@ -234,11 +234,12 @@ func (c Client) getNumberOfRows(ctx context.Context, m string) (int, error) {
 		return 0, err
 	}
 
-	// TODO: add comments
-	sr := e[0].SeatRows
-	r := sr[len(sr)-1][0].Row
-	span.SetAttributes(attribute.Int("number_of_rows", r))
-	return r, nil
+	// Get first response
+	r := rs[0]
+	nor := len(r.SeatRows)
+
+	span.SetAttributes(attribute.Int("number_of_rows", nor))
+	return nor, nil
 }
 
 func calculateEmptySeats(rows int, seats []string) EmptySeats {
@@ -270,20 +271,20 @@ func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
 		span.SetStatus(codes.Error, err.Error())
 		return EmptySeats{}, err
 	}
-	span.AddEvent("Booking ID retrieved successfully.", trace.WithAttributes(attribute.String("bookingId", bookingId)))
+	span.AddEvent("Booking ID retrieved successfully.")
 
-	log.Printf("Get Booking with ID: %s.\n", bookingId)
-	bAuth, err := c.getSessionInfo(ctx, a, bookingId)
+	log.Println("Get Trip info.")
+	ti, err := c.getTripInfo(ctx, a, bookingId)
 	if err != nil {
-		err := fmt.Errorf("get booking failed: %v", err)
+		err := fmt.Errorf("get trip info failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
 		return EmptySeats{}, err
 	}
-	span.AddEvent("Booking retrieved successfully.", trace.WithAttributes(attribute.String("tripId", bAuth.TripId)))
+	span.AddEvent("Trip info retrieved successfully.")
 
 	log.Println("Create basket.")
-	basketId, err := c.createBasket(ctx, bAuth)
+	basketId, err := c.createBasket(ctx, ti)
 	if err != nil {
 		err = fmt.Errorf("basket creation failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
@@ -292,33 +293,31 @@ func (c Client) queryRyanair(ctx context.Context, a RAuth) (EmptySeats, error) {
 	}
 	span.AddEvent("Basket created successfully.", trace.WithAttributes(attribute.String("basketId", basketId)))
 
-	log.Println("Get seats.")
-	seats, err := c.getFlightInfo(ctx, basketId)
+	log.Println("Get Flight info.")
+	fi, err := c.getFlightInfo(ctx, basketId)
 	if err != nil {
-		err = fmt.Errorf("get seats failed: %v", err)
+		err = fmt.Errorf("get flight info failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
 		return EmptySeats{}, err
 	}
-	span.AddEvent("Seats retrieved successfully.", trace.WithAttributes(
-		attribute.String("equipmentModel", seats.EquipmentModel),
-		attribute.Int("unavailableSeats", len(seats.UnavailableSeats))))
+	span.AddEvent("Flight info retrieved successfully.")
 
 	log.Println("Get number of rows in the plane.")
-	rows, err := c.getNumberOfRows(ctx, seats.EquipmentModel)
+	nor, err := c.getNumberOfRows(ctx, fi.EquipmentModel)
 	if err != nil {
 		err = fmt.Errorf("get number of rows in the plane failed: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
 		return EmptySeats{}, err
 	}
-	span.AddEvent("Number of rows retrieved successfully.", trace.WithAttributes(attribute.Int("rows", rows)))
+	span.AddEvent("Number of rows retrieved successfully.")
 
 	log.Println("Calculate number of empty seats.")
-	ss := calculateEmptySeats(rows, seats.UnavailableSeats)
+	es := calculateEmptySeats(nor, fi.UnavailableSeats)
 	span.AddEvent("Empty seats calculated successfully.", trace.WithAttributes(
-		attribute.Int("window", ss.Window),
-		attribute.Int("middle", ss.Middle),
-		attribute.Int("aisle", ss.Aisle)))
-	return ss, nil
+		attribute.Int("window", es.Window),
+		attribute.Int("middle", es.Middle),
+		attribute.Int("aisle", es.Aisle)))
+	return es, nil
 }
