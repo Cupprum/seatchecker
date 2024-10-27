@@ -47,6 +47,8 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
 		log.Printf("Error: %v\n", err)
+		// Returning nil error, as lambda finished.
+		// The error which happend in logic is returned through Message of Event response.
 		return Event{Status: 500, Message: err.Error()}, nil
 	}
 
