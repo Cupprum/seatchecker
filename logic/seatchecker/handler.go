@@ -6,13 +6,10 @@ import (
 	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
-
-type EmptySeats struct {
-	Window int `json:"window"`
-	Middle int `json:"middle"`
-	Aisle  int `json:"aisle"`
-}
 
 type Event struct {
 	RyanairEmail    string     `json:"ryanair_email"`
@@ -23,17 +20,35 @@ type Event struct {
 	Message         string     `json:"message"`
 }
 
-func (ss EmptySeats) generateText() string {
-	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", ss.Window, ss.Middle, ss.Aisle)
+type EmptySeats struct {
+	Window int `json:"window"`
+	Middle int `json:"middle"`
+	Aisle  int `json:"aisle"`
+}
+
+// Wrapped in a function for testability purpose.
+func (es EmptySeats) generateText() string {
+	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", es.Window, es.Middle, es.Aisle)
 }
 
 func handler(ctx context.Context, e Event) (Event, error) {
-	// TODO: configure opentelemetry
+	log.Println("Started Lambda execution.")
+
 	defer func() { tp.ForceFlush(ctx) }()
 	ctx, span := tr.Start(ctx, "handler")
 	defer span.End()
+	span.SetAttributes(
+		attribute.Int("window", e.SeatState.Window),
+		attribute.Int("middle", e.SeatState.Middle),
+		attribute.Int("aisle", e.SeatState.Aisle))
 
-	log.Printf("Received Event: %v\n", e)
+	// Helper function to throw error.
+	throwErr := func(err error) (Event, error) {
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		log.Printf("Error: %v\n", err)
+		return Event{Status: 500, Message: err.Error()}, nil
+	}
 
 	// Ryanair Mobile API.
 	rmc := Client{scheme: "https", fqdn: "services-api.ryanair.com"}
@@ -41,11 +56,10 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	log.Printf("Start Ryanair account login for user: %s.\n", e.RyanairEmail)
 	a, err := rmc.accountLogin(ctx, e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
-		err = fmt.Errorf("login failed: %v", err)
-		log.Printf("Error: %v\n", err)
-		return Event{Status: 500, Message: err.Error()}, nil
+		err := fmt.Errorf("login failed: %v", err)
+		return throwErr(err)
 	}
-	log.Println("Account login finished successfully.")
+	span.AddEvent("Account login finished successfully.")
 
 	// Ryanair Browser API.
 	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
@@ -53,34 +67,38 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	log.Println("Query Ryanair for seats.")
 	es, err := rc.getEmptySeats(ctx, a)
 	if err != nil {
-		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
-		log.Printf("Error: %v\n", err)
-		return Event{Status: 500, Message: err.Error()}, nil
+		err := fmt.Errorf("failed to query ryanair for seats, error: %v", err)
+		return throwErr(err)
 	}
-	log.Println("Seats from Ryanair retrieved successfully.")
+	span.AddEvent("Seats from Ryanair retrieved successfully.")
 
 	pTxt := e.SeatState.generateText()
 	log.Printf("Previous execution: %v", pTxt)
+	span.AddEvent("Previous execution text generated.", trace.WithAttributes(
+		attribute.String("previous_execution", pTxt)))
 
 	cTxt := es.generateText()
 	log.Printf("Current execution: %v", cTxt)
+	span.AddEvent("Current execution text generated.", trace.WithAttributes(
+		attribute.String("current_execution", cTxt)))
 
 	if pTxt != cTxt {
+		// Send notification that there is a change in seat availability.
 		nc := Client{scheme: "https", fqdn: "ntfy.sh"}
 
 		log.Println("Send notification.")
 		err := nc.sendNotification(ctx, e.NtfyTopic, cTxt)
 		if err != nil {
 			err = fmt.Errorf("failed to send notification, error: %v", err)
-			log.Printf("Error: %v\n", err)
-			return Event{Status: 500, Message: err.Error()}, nil
+			return throwErr(err)
 		}
-		log.Println("Notification sent successfully.")
+		span.AddEvent("Notification sent successfully.")
 	}
 
 	e.SeatState = es
 	e.Status = 200
 
+	span.AddEvent("Program finished successfully.")
 	log.Println("Program finished successfully.")
 	return e, nil
 }
