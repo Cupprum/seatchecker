@@ -25,6 +25,7 @@ type BIdResp struct {
 func (c Client) getBookingId(ctx context.Context, a Auth) (string, error) {
 	ctx, span := tr.Start(ctx, "get_booking_id")
 	defer span.End()
+	span.SetAttributes(attribute.String("customer_id", a.CustomerID)) // NOTE: delete after testing.
 
 	p, err := url.JoinPath("api/orders/v2/orders", a.CustomerID)
 	if err != nil {
@@ -257,6 +258,7 @@ func calculateEmptySeats(rows int, seats []string) EmptySeats {
 func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	ctx, span := tr.Start(ctx, "ryanair_get_empty_seats")
 	defer span.End()
+	span.SetAttributes(attribute.String("customer_id", a.CustomerID)) // NOTE: delete after testing.
 
 	log.Println("Get closest Booking ID.")
 	bookingId, err := c.getBookingId(ctx, a)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -16,6 +17,7 @@ type Auth struct {
 func (c Client) accountLogin(ctx context.Context, email string, password string) (Auth, error) {
 	ctx, span := tr.Start(ctx, "ryanair_account_login")
 	defer span.End()
+	span.SetAttributes(attribute.String("email", email)) // NOTE: delete after testing.
 
 	p := "usrprof/v2/accountLogin"
 
