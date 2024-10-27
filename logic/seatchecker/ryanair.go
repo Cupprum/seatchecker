@@ -260,13 +260,17 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	defer span.End()
 	span.SetAttributes(attribute.String("customer_id", a.CustomerID)) // NOTE: delete after testing.
 
+	throwErr := func(err error) (EmptySeats, error) {
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+		return EmptySeats{}, err
+	}
+
 	log.Println("Get closest Booking ID.")
 	bookingId, err := c.getBookingId(ctx, a)
 	if err != nil {
 		err = fmt.Errorf("get booking ID failed: %v", err)
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return throwErr(err)
 	}
 	span.AddEvent("Booking ID retrieved successfully.")
 
@@ -274,9 +278,7 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	ti, err := c.getTripInfo(ctx, a, bookingId)
 	if err != nil {
 		err := fmt.Errorf("get trip info failed: %v", err)
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return throwErr(err)
 	}
 	span.AddEvent("Trip info retrieved successfully.")
 
@@ -284,9 +286,7 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	basketId, err := c.createBasket(ctx, ti)
 	if err != nil {
 		err = fmt.Errorf("basket creation failed: %v", err)
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return throwErr(err)
 	}
 	span.AddEvent("Basket created successfully.")
 
@@ -294,9 +294,7 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	fi, err := c.getFlightInfo(ctx, basketId)
 	if err != nil {
 		err = fmt.Errorf("get flight info failed: %v", err)
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return throwErr(err)
 	}
 	span.AddEvent("Flight info retrieved successfully.")
 
@@ -304,9 +302,7 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	nor, err := c.getNumberOfRows(ctx, fi.EquipmentModel)
 	if err != nil {
 		err = fmt.Errorf("get number of rows in the plane failed: %v", err)
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return throwErr(err)
 	}
 	span.AddEvent("Number of rows retrieved successfully.")
 
