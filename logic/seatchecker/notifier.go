@@ -19,7 +19,7 @@ type Notification struct {
 func (c Client) sendNotification(ctx context.Context, topic string, text string) error {
 	ctx, span := tr.Start(ctx, "notifier_send_notification")
 	defer span.End()
-	span.SetAttributes(attribute.String("topic", topic), attribute.String("text", text))
+	span.SetAttributes(attribute.String("topic", topic), attribute.String("text", text)) // NOTE: delete after testing.
 
 	b := Notification{
 		Topic:   topic,

@@ -87,6 +87,7 @@ type TIData struct {
 func (c Client) getTripInfo(ctx context.Context, a Auth, id string) (TripInfo, error) {
 	ctx, span := tr.Start(ctx, "get_trip_info")
 	defer span.End()
+	span.SetAttributes(attribute.String("booking_id", id)) // NOTE: delete after testing.
 
 	p := "api/bookingfa/en-gb/graphql"
 
@@ -127,6 +128,7 @@ type BData struct {
 func (c Client) createBasket(ctx context.Context, ti TripInfo) (string, error) {
 	ctx, span := tr.Start(ctx, "create_basket")
 	defer span.End()
+	span.SetAttributes(attribute.String("trip_id", ti.TripId)) // NOTE: delete after testing.
 
 	p := "api/basketapi/en-gb/graphql"
 
@@ -170,6 +172,7 @@ type FIData struct {
 func (c Client) getFlightInfo(ctx context.Context, id string) (FlightInfo, error) {
 	ctx, span := tr.Start(ctx, "get_flight_info")
 	defer span.End()
+	span.SetAttributes(attribute.String("basket_id", id)) // NOTE: delete after testing.
 
 	p := "api/catalogapi/en-gb/graphql"
 
@@ -211,6 +214,7 @@ type NORResp struct {
 func (c Client) getNumberOfRows(ctx context.Context, m string) (int, error) {
 	ctx, span := tr.Start(ctx, "get_number_of_rows")
 	defer span.End()
+	span.SetAttributes(attribute.String("model", m)) // NOTE: delete after testing.
 
 	p := "api/booking/v5/en-ie/res/seatmap"
 
