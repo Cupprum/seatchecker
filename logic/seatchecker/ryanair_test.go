@@ -95,7 +95,7 @@ func TestGetBookingById(t *testing.T) {
 }
 
 func TestCreateBasket(t *testing.T) {
-	a := TripInfo{"trip_id", "session_token"}
+	a := TripInfo{"trip_id", "session_token", []Journey{{"depart_utc"}}}
 	e := "basket_id"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

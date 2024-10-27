@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -67,8 +68,13 @@ type GqlResponse[T any] struct {
 }
 
 type TripInfo struct {
-	TripId       string `json:"tripId"`
-	SessionToken string `json:"sessionToken"`
+	TripId       string    `json:"tripId"`
+	SessionToken string    `json:"sessionToken"`
+	Journeys     []Journey `json:"journeys"`
+}
+
+type Journey struct {
+	DepartUTC string `json:"departUTC"`
 }
 
 type BInfo struct {
@@ -97,7 +103,13 @@ func (c Client) getTripInfo(ctx context.Context, a Auth, id string) (TripInfo, e
 			getBookingByBookingId(bookingInfo: $bookingInfo, authToken: $authToken) {
 				sessionToken
 				tripId
+				journeys {
+		        	...JourneysFrag
+      			}
 			}
+		}
+		fragment JourneysFrag on BookingJourneyResponseModelType {
+			departUTC
 		}
 	`
 	v := TIVars{
@@ -114,8 +126,31 @@ func (c Client) getTripInfo(ctx context.Context, a Auth, id string) (TripInfo, e
 		return TripInfo{}, err
 	}
 
-	si := r.Data.TI
-	return si, nil
+	n := time.Now().UTC()
+
+	// TODO: test this part of logic.
+	// Find the upcoming flight.
+	var pt time.Time
+	for _, j := range r.Data.TI.Journeys {
+		// RFC3339 is the formet Ryanair uses for time.
+		pt, err = time.Parse(time.RFC3339, j.DepartUTC)
+		if err != nil {
+			err = fmt.Errorf("error parsing time: %v", err)
+			span.RecordError(err, trace.WithStackTrace(true))
+			span.SetStatus(codes.Error, err.Error())
+			return TripInfo{}, err
+		}
+		if pt.Before(n) {
+			continue
+		} else {
+			break
+		}
+	}
+
+	fmt.Print("Time: ", pt.UTC())
+
+	ti := r.Data.TI
+	return ti, nil
 }
 
 type Basket struct {
