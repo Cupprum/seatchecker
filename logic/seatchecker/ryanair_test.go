@@ -62,17 +62,17 @@ func TestGetBookingById(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request
 		rawB, _ := io.ReadAll(r.Body)
-		b := GqlQuery[SIVars]{}
+		b := GqlQuery[TIVars]{}
 		json.Unmarshal(rawB, &b)
 
-		v := SIVars{AuthToken: "token", BookingInfo: BInfo{BookingId: "booking_id", SurrogateId: "customerid"}}
+		v := TIVars{AuthToken: "token", BookingInfo: BInfo{BookingId: "booking_id", SurrogateId: "customerid"}}
 		if !reflect.DeepEqual(v, b.Variables) {
 			t.Fatalf("wrong payload, expected: %v, received: %v", v, b.Variables)
 		}
 
 		// Create fake response
-		rres := GqlResponse[SIData]{
-			Data: SIData{TripInfo: e},
+		rres := GqlResponse[TIData]{
+			Data: TIData{TI: e},
 		}
 		res, _ := json.Marshal(rres)
 		fmt.Fprintln(w, string(res))

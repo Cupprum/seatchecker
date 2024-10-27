@@ -65,7 +65,6 @@ type GqlResponse[T any] struct {
 	Data T `json:"data"`
 }
 
-// TODO: rename structs regarding authentication to something more useful.
 type TripInfo struct {
 	TripId       string `json:"tripId"`
 	SessionToken string `json:"sessionToken"`
@@ -76,13 +75,13 @@ type BInfo struct {
 	SurrogateId string `json:"surrogateId"`
 }
 
-type SIVars struct {
+type TIVars struct {
 	BookingInfo BInfo  `json:"bookingInfo"`
 	AuthToken   string `json:"authToken"`
 }
 
-type SIData struct {
-	TripInfo TripInfo `json:"getBookingByBookingId"`
+type TIData struct {
+	TI TripInfo `json:"getBookingByBookingId"`
 }
 
 func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, error) {
@@ -99,13 +98,13 @@ func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, 
 			}
 		}
 	`
-	v := SIVars{
+	v := TIVars{
 		BInfo{id, a.CustomerID},
 		a.Token,
 	}
-	b := GqlQuery[SIVars]{Query: q, Variables: v}
+	b := GqlQuery[TIVars]{Query: q, Variables: v}
 
-	r, err := httpsRequestPost[GqlResponse[SIData]](ctx, c, p, b)
+	r, err := httpsRequestPost[GqlResponse[TIData]](ctx, c, p, b)
 	if err != nil {
 		err = fmt.Errorf("failed to get booking: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
@@ -113,7 +112,7 @@ func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, 
 		return TripInfo{}, err
 	}
 
-	si := r.Data.TripInfo
+	si := r.Data.TI
 	return si, nil
 }
 
