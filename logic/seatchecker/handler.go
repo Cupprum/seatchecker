@@ -39,7 +39,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	rmc := Client{scheme: "https", fqdn: "services-api.ryanair.com"}
 
 	log.Printf("Start Ryanair account login for user: %s.\n", e.RyanairEmail)
-	cAuth, err := rmc.accountLogin(ctx, e.RyanairEmail, e.RyanairPassword)
+	a, err := rmc.accountLogin(ctx, e.RyanairEmail, e.RyanairPassword)
 	if err != nil {
 		err = fmt.Errorf("login failed: %v", err)
 		log.Printf("Error: %v\n", err)
@@ -51,7 +51,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
 
 	log.Println("Query Ryanair for seats.")
-	es, err := rc.getEmptySeats(ctx, cAuth)
+	es, err := rc.getEmptySeats(ctx, a)
 	if err != nil {
 		err = fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		log.Printf("Error: %v\n", err)

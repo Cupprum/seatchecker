@@ -12,7 +12,7 @@ import (
 
 func TestAccountLogin(t *testing.T) {
 	em, pw := "john@doe.com", "password"
-	e := RAuth{"customerid", "token"}
+	e := Auth{"customerid", "token"}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request

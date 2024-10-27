@@ -22,7 +22,7 @@ type BIdResp struct {
 	Items []BIdItem `json:"items"`
 }
 
-func (c Client) getBookingId(ctx context.Context, a RAuth) (string, error) {
+func (c Client) getBookingId(ctx context.Context, a Auth) (string, error) {
 	ctx, span := tr.Start(ctx, "get_booking_id")
 	defer span.End()
 
@@ -84,7 +84,7 @@ type TIData struct {
 	TI TripInfo `json:"getBookingByBookingId"`
 }
 
-func (c Client) getTripInfo(ctx context.Context, a RAuth, id string) (TripInfo, error) {
+func (c Client) getTripInfo(ctx context.Context, a Auth, id string) (TripInfo, error) {
 	ctx, span := tr.Start(ctx, "get_trip_info")
 	defer span.End()
 
@@ -250,7 +250,7 @@ func calculateEmptySeats(rows int, seats []string) EmptySeats {
 	return es
 }
 
-func (c Client) getEmptySeats(ctx context.Context, a RAuth) (EmptySeats, error) {
+func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 	ctx, span := tr.Start(ctx, "ryanair_get_empty_seats")
 	defer span.End()
 

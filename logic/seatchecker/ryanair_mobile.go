@@ -8,12 +8,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type RAuth struct {
+type Auth struct {
 	CustomerID string `json:"customerId"`
 	Token      string `json:"token"`
 }
 
-func (c Client) accountLogin(ctx context.Context, email string, password string) (RAuth, error) {
+func (c Client) accountLogin(ctx context.Context, email string, password string) (Auth, error) {
 	ctx, span := tr.Start(ctx, "ryanair_account_login")
 	defer span.End()
 
@@ -27,12 +27,12 @@ func (c Client) accountLogin(ctx context.Context, email string, password string)
 		password,
 	}
 
-	a, err := httpsRequestPost[RAuth](ctx, c, p, b)
+	a, err := httpsRequestPost[Auth](ctx, c, p, b)
 	if err != nil {
 		err = fmt.Errorf("failed to get account login: %v", err)
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
-		return RAuth{}, err
+		return Auth{}, err
 	}
 	span.AddEvent("Account login successful.")
 

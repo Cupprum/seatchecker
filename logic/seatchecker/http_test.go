@@ -69,7 +69,7 @@ func TestRequestCreator(t *testing.T) {
 }
 
 func TestHttpsRequest(t *testing.T) {
-	ra := RAuth{
+	ra := Auth{
 		CustomerID: "test_customer_id",
 		Token:      "test_token",
 	}
@@ -90,7 +90,7 @@ func TestHttpsRequest(t *testing.T) {
 		nil,
 		nil,
 	}
-	rra, _ := httpsRequest[RAuth](r)
+	rra, _ := httpsRequest[Auth](r)
 
 	if !reflect.DeepEqual(ra, rra) {
 		t.Fatalf("returned struct is incorrect, expected: %v, received: %v\n", ra, rra)
