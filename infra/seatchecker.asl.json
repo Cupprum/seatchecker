@@ -38,15 +38,15 @@
         {
           "And": [
             {
-              "Variable": "$.window",
+              "Variable": "$.seat_state.window",
               "NumericEquals": 0
             },
             {
-              "Variable": "$.middle",
+              "Variable": "$.seat_state.middle",
               "NumericEquals": 0
             },
             {
-              "Variable": "$.aisle",
+              "Variable": "$.seat_state.aisle",
               "NumericEquals": 0
             }
           ],
