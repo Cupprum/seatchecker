@@ -122,13 +122,23 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		span.AddEvent("Notification sent successfully.")
 	}
 
+	// Execute on first run.
 	if e.Departure == "" {
-		d, err := nextDeparture(js)
+		e.Departure, err = nextDeparture(js)
 		if err != nil {
 			err = fmt.Errorf("error calculating next departure: %v", err)
 			return throwErr(err)
 		}
-		e.Departure = d
+	}
+
+	// Execute on last run.
+	d, err := time.Parse(time.RFC3339, e.Departure)
+	if err != nil {
+		err = fmt.Errorf("error parsing time: %v", err)
+		return throwErr(err)
+	}
+	if time.Now().UTC().After(d) {
+		es = EmptySeats{0, 0, 0}
 	}
 
 	e.SeatState = es
