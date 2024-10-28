@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"go.opentelemetry.io/otel/attribute"
@@ -18,6 +19,7 @@ type Event struct {
 	SeatState       EmptySeats `json:"seat_state"`
 	Status          int        `json:"status"`
 	Message         string     `json:"message"`
+	Departure       string     `json:"departure"`
 }
 
 type EmptySeats struct {
@@ -29,6 +31,29 @@ type EmptySeats struct {
 // Wrapped in a function for testability purpose.
 func (es EmptySeats) generateText() string {
 	return fmt.Sprintf("Window: %v, Middle: %v, Aisle: %v", es.Window, es.Middle, es.Aisle)
+}
+
+// TODO: test this part of logic.
+func nextDeparture(js []string) (string, error) {
+	n := time.Now().UTC()
+
+	// Find the upcoming flight.
+	var pt time.Time
+	var err error
+	for _, j := range js {
+		// RFC3339 is the formet Ryanair uses for time.
+		pt, err = time.Parse(time.RFC3339, j)
+		if err != nil {
+			return "", fmt.Errorf("error parsing time: %v", err)
+		}
+		if pt.Before(n) {
+			continue
+		} else {
+			break
+		}
+	}
+
+	return pt.UTC().String(), nil
 }
 
 func handler(ctx context.Context, e Event) (Event, error) {
@@ -67,7 +92,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 	rc := Client{scheme: "https", fqdn: "www.ryanair.com"}
 
 	log.Println("Query Ryanair for seats.")
-	es, err := rc.getEmptySeats(ctx, a)
+	es, js, err := rc.getEmptySeats(ctx, a)
 	if err != nil {
 		err := fmt.Errorf("failed to query ryanair for seats, error: %v", err)
 		return throwErr(err)
@@ -95,6 +120,15 @@ func handler(ctx context.Context, e Event) (Event, error) {
 			return throwErr(err)
 		}
 		span.AddEvent("Notification sent successfully.")
+	}
+
+	if e.Departure == "" {
+		d, err := nextDeparture(js)
+		if err != nil {
+			err = fmt.Errorf("error calculating next departure: %v", err)
+			return throwErr(err)
+		}
+		e.Departure = d
 	}
 
 	e.SeatState = es

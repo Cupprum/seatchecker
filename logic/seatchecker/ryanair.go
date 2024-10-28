@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -125,29 +124,6 @@ func (c Client) getTripInfo(ctx context.Context, a Auth, id string) (TripInfo, e
 		span.SetStatus(codes.Error, err.Error())
 		return TripInfo{}, err
 	}
-
-	n := time.Now().UTC()
-
-	// TODO: test this part of logic.
-	// Find the upcoming flight.
-	var pt time.Time
-	for _, j := range r.Data.TI.Journeys {
-		// RFC3339 is the formet Ryanair uses for time.
-		pt, err = time.Parse(time.RFC3339, j.DepartUTC)
-		if err != nil {
-			err = fmt.Errorf("error parsing time: %v", err)
-			span.RecordError(err, trace.WithStackTrace(true))
-			span.SetStatus(codes.Error, err.Error())
-			return TripInfo{}, err
-		}
-		if pt.Before(n) {
-			continue
-		} else {
-			break
-		}
-	}
-
-	fmt.Print("Time: ", pt.UTC())
 
 	ti := r.Data.TI
 	return ti, nil
@@ -290,15 +266,15 @@ func calculateEmptySeats(rows int, seats []string) EmptySeats {
 	return es
 }
 
-func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
+func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, []string, error) {
 	ctx, span := tr.Start(ctx, "ryanair_get_empty_seats")
 	defer span.End()
 	span.SetAttributes(attribute.String("customer_id", a.CustomerID)) // NOTE: delete after testing.
 
-	throwErr := func(err error) (EmptySeats, error) {
+	throwErr := func(err error) (EmptySeats, []string, error) {
 		span.RecordError(err, trace.WithStackTrace(true))
 		span.SetStatus(codes.Error, err.Error())
-		return EmptySeats{}, err
+		return EmptySeats{}, nil, err
 	}
 
 	log.Println("Get closest Booking ID.")
@@ -347,5 +323,10 @@ func (c Client) getEmptySeats(ctx context.Context, a Auth) (EmptySeats, error) {
 		attribute.Int("window", es.Window),
 		attribute.Int("middle", es.Middle),
 		attribute.Int("aisle", es.Aisle)))
-	return es, nil
+
+	var js []string
+	for _, j := range ti.Journeys {
+		js = append(js, j.DepartUTC)
+	}
+	return es, js, nil
 }
