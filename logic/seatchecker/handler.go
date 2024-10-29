@@ -137,6 +137,7 @@ func handler(ctx context.Context, e Event) (Event, error) {
 		err = fmt.Errorf("error parsing time: %v", err)
 		return throwErr(err)
 	}
+	// The flight has departed.
 	if time.Now().UTC().After(d) {
 		es = EmptySeats{0, 0, 0}
 	}
