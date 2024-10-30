@@ -16,3 +16,7 @@ This API starts an AWS Step Function, which regularly sends notifications to [nt
 
 ### The real purpose of this project:
 Sam wanted to play around with new shiny things and was missing Golang.
+
+### Chart
+
+![seatchecker chart](chart/seatchecker.svg)
