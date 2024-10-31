@@ -1,8 +1,6 @@
 # seatchecker
 
-![GitHub Action](https://github.com/Cupprum/seatchecker/actions/workflows/dagger.yml/badge.svg?branch=main)
-
-[Dagger](https://dagger.cloud/Cupprum/traces)
+![GitHub Action](https://github.com/Cupprum/seatchecker/actions/workflows/dagger.yml/badge.svg?branch=main) [![Dagger badge](https://badgen.net/badge/Dagger/o11y/blue?icon=terminal)](https://dagger.cloud/Cupprum/traces) [![Dagger badge](https://badgen.net/badge/Honeycomb/o11y/blue?icon=terminal)](https://ui.eu1.honeycomb.io/login)
 
 ### Functionality of this project:
 Query Ryanair to check number of empty Window, Middle and Aisle seats on upcomming flight.
