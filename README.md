@@ -15,8 +15,15 @@ This API starts an AWS Step Function, which regularly sends notifications to [nt
 ### The real purpose of this project:
 Sam wanted to play around with new shiny things and was missing Golang.
 
+### Parts of the project:
+* .devcontainer -> development environment
+* .github -> deployment pipeline definition
+* chart -> chart for README
+* cicd -> dagger deployment pipeline written in golang
+* infra -> AWS Infrastructure deployed by Terraform
+* logic -> AWS Lambda function writen in golang
+* README -> the only piece of documentation
+
 ### Chart
 
 ![seatchecker chart](chart/seatchecker.svg)
-### Parts of the project:
-* .devcontainer -> develop locally
