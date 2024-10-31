@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -157,17 +159,22 @@ func main() {
 
 	defer setupOtel(ctx)()
 
-	lambda.Start(handler)
-	// i := Event{
-	// 	RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
-	// 	RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
-	// 	NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
-	// 	SeatState: EmptySeats{
-	// 		Window: 99,
-	// 		Middle: 99,
-	// 		Aisle:  99,
-	// 	},
-	// }
-	// resp, _ := handler(ctx, i)
-	// log.Println(resp)
+	if strings.HasPrefix(os.Getenv("AWS_EXECUTION_ENV"), "AWS_Lambda_") {
+		// In cloud.
+		lambda.Start(handler)
+	} else {
+		// Locally.
+		i := Event{
+			RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
+			RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
+			NtfyTopic:       os.Getenv("SEATCHECKER_NTFY_TOPIC"),
+			SeatState: EmptySeats{
+				Window: 99,
+				Middle: 99,
+				Aisle:  99,
+			},
+		}
+		resp, _ := handler(ctx, i)
+		log.Println(resp)
+	}
 }
