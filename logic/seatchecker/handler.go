@@ -59,7 +59,9 @@ func nextDeparture(js []string) (string, error) {
 func handler(ctx context.Context, e Event) (Event, error) {
 	log.Println("Started Lambda execution.")
 
+	// Flush traces when handler finishes.
 	defer func() { tp.ForceFlush(ctx) }()
+
 	ctx, span := tr.Start(ctx, "handler")
 	defer span.End()
 	span.SetAttributes(
