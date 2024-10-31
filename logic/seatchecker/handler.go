@@ -155,7 +155,6 @@ func handler(ctx context.Context, e Event) (Event, error) {
 func main() {
 	ctx := context.Background()
 
-	// TODO: try to simplify OTEL through ADOT.
 	defer setupOtel(ctx)()
 
 	lambda.Start(handler)
