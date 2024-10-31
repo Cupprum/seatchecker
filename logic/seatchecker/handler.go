@@ -160,10 +160,10 @@ func main() {
 	defer setupOtel(ctx)()
 
 	if strings.HasPrefix(os.Getenv("AWS_EXECUTION_ENV"), "AWS_Lambda_") {
-		// In cloud.
+		log.Println("Running in AWS Lambda.")
 		lambda.Start(handler)
 	} else {
-		// Locally.
+		log.Println("Running in Locally.")
 		i := Event{
 			RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
 			RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
