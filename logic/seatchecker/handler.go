@@ -163,7 +163,7 @@ func main() {
 		log.Println("Running in AWS Lambda.")
 		lambda.Start(handler)
 	} else {
-		log.Println("Running in Locally.")
+		log.Println("Running locally.")
 		i := Event{
 			RyanairEmail:    os.Getenv("SEATCHECKER_RYANAIR_EMAIL"),
 			RyanairPassword: os.Getenv("SEATCHECKER_RYANAIR_PASSWORD"),
