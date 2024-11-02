@@ -18,7 +18,7 @@ Sam wanted to play around with new shiny things and was missing Golang.
 ## Parts of the project:
 * .devcontainer -> development environment
 * .github -> deployment pipeline definition
-* chart -> chart for README
+* chart -> chart of architecture for README
 * cicd -> dagger deployment pipeline written in golang
 * infra -> AWS Infrastructure deployed by Terraform
 * logic -> AWS Lambda function writen in golang
@@ -30,7 +30,7 @@ Sam wanted to play around with new shiny things and was missing Golang.
 
 ## How to work on the project:
 
-Short descriptions and set of commands to get started.
+This section contains short descriptions and set of commands to get started.
 
 ### Logic
 The whole logic is basically a golang program.
