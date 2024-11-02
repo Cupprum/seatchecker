@@ -96,6 +96,27 @@ func (m *Cicd) Apply(
 	return tf.Stdout(ctx)
 }
 
+// Plan infrastructure changes.
+func (m *Cicd) Plan(
+	ctx context.Context,
+	// Directory containing the seatchecker lambda source code.
+	seatchecker *Directory,
+	// Directory containing the infrastructure.
+	infra *Directory,
+	// AWS Access Key ID.
+	access_key *Secret,
+	// AWS Secret Access Key.
+	secret_key *Secret,
+) (string, error) {
+	sc := PackageGoLambda(seatchecker, "seatchecker")
+
+	tf := TerraformContainer(infra, access_key, secret_key).
+		WithDirectory("/out/seatchecker", sc)
+	tf = tf.WithExec([]string{"plan"})
+
+	return tf.Stdout(ctx)
+}
+
 // Destroy the infrastructure.
 func (m *Cicd) Destroy(
 	ctx context.Context,
