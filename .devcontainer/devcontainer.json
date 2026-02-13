@@ -2,10 +2,10 @@
     "name": "Seatchecker",
     "build": {
         "dockerfile": "Dockerfile"
-    }
+    },
     // Running in priviledged mode to allow access to docker.
-    // "runArgs": ["--volume=/var/lib/docker", "--privileged"],
-    // "postStartCommand": "nohup bash -c 'dockerd &' > /dev/null 2>&1"
+    "runArgs": ["--volume=/var/lib/docker", "--privileged"],
+    "postStartCommand": "nohup bash -c 'dockerd &' > /dev/null 2>&1"
 
     // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
     // "remoteUser": "root"
